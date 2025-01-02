@@ -1,0 +1,144 @@
+# Istio Helm Values Configuration for Nexus B2B Platform
+# Version: 1.18.0
+# Provides comprehensive service mesh configuration for security, observability, and traffic management
+
+# Global settings applied across all components
+global:
+  istioNamespace: istio-system
+  
+  # Enhanced mTLS configuration
+  mtls:
+    enabled: true
+    mode: STRICT
+    autoMtls: true
+    minProtocolVersion: TLSV1_2
+    cipherSuites:
+      - ECDHE-ECDSA-AES256-GCM-SHA384
+      - ECDHE-RSA-AES256-GCM-SHA384
+
+  # Proxy configuration with resource limits
+  proxy:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 2000m
+        memory: 1024Mi
+    accessLogging:
+      enabled: true
+      format: JSON
+      outputPath: /dev/stdout
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+
+  # JWT authentication configuration
+  jwtPolicy: third-party-jwt
+  
+  # Enhanced security headers
+  securityHeaders:
+    strictTransportSecurity: max-age=31536000; includeSubDomains; preload
+    xFrameOptions: DENY
+    xContentTypeOptions: nosniff
+
+# Gateway configuration for ingress traffic
+gateway:
+  enabled: true
+  replicaCount: 2
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+  servers:
+    - port: 80
+      protocol: HTTP
+      httpsRedirect: true
+    - port: 443
+      protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: nexus-tls-cert
+        minProtocolVersion: TLSV1_2
+        cipherSuites:
+          - ECDHE-ECDSA-AES256-GCM-SHA384
+          - ECDHE-RSA-AES256-GCM-SHA384
+
+# Virtual service configuration for routing
+virtualService:
+  enabled: true
+  routes:
+    user-service:
+      prefix: /api/v1/users
+      service: user-service
+      port: 8080
+      timeout: 5s
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: connect-failure,refused-stream,unavailable,cancelled,resource-exhausted
+    product-service:
+      prefix: /api/v1/products
+      service: product-service
+      port: 8080
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: connect-failure,refused-stream,unavailable,cancelled,resource-exhausted
+    order-service:
+      prefix: /api/v1/orders
+      service: order-service
+      port: 8080
+      timeout: 15s
+      retries:
+        attempts: 3
+        perTryTimeout: 5s
+        retryOn: connect-failure,refused-stream,unavailable,cancelled,resource-exhausted
+
+# Destination rule configuration for traffic policies
+destinationRule:
+  enabled: true
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+      consistentHash:
+        httpHeaderName: x-user-id
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30ms
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 1024
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 30s
+        h2MaxRequests: 1000
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 10
+      minHealthPercent: 50
+
+# Tracing configuration for observability
+tracing:
+  enabled: true
+  provider: jaeger
+  sampling: 100
+  customTags:
+    environment: production
+    region: us-east-1
+
+# Prometheus configuration for metrics
+prometheus:
+  enabled: true
+  scrapeInterval: 15s
+  retention:
+    time: 15d
+    size: 50GB
