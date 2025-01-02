@@ -1,0 +1,119 @@
+# Notification Service Configuration
+# Version: 3.1.0
+# Dependencies:
+# - spring-boot-starter-web:3.1.0
+# - spring-kafka:3.1.0
+# - sendgrid-java:4.9.3
+# - micrometer-registry-prometheus:1.11.0
+
+spring:
+  application:
+    name: notification-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # Kafka Configuration with enhanced security and performance settings
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      batch-size: 16384
+      properties:
+        max.in.flight.requests.per.connection: 5
+        compression.type: snappy
+        enable.idempotence: true
+        linger.ms: 5
+        request.timeout.ms: 30000
+        max.request.size: 2097152
+    
+    consumer:
+      group-id: notification-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.nexus.notification.*
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 500
+        max.poll.records: 500
+        max.partition.fetch.bytes: 1048576
+        heartbeat.interval.ms: 3000
+        session.timeout.ms: 45000
+        max.poll.interval.ms: 300000
+
+# Server Configuration
+server:
+  port: 8085
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 2048
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+    connection-timeout: 5000
+
+# Monitoring and Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info,loggers
+      base-path: /actuator
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active}
+    export:
+      prometheus:
+        enabled: true
+        step: 30s
+    distribution:
+      percentiles-histogram: true
+      sla:
+        http: [50, 100, 200, 500]
+  health:
+    show-details: when_authorized
+    probes:
+      enabled: true
+
+# SendGrid Email Configuration
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  from-email: ${SENDGRID_FROM_EMAIL}
+  from-name: ${SENDGRID_FROM_NAME:Nexus Platform}
+  templates:
+    welcome: ${SENDGRID_WELCOME_TEMPLATE_ID}
+    order-confirmation: ${SENDGRID_ORDER_CONFIRMATION_TEMPLATE_ID}
+    shipping-update: ${SENDGRID_SHIPPING_UPDATE_TEMPLATE_ID}
+    password-reset: ${SENDGRID_PASSWORD_RESET_TEMPLATE_ID}
+    account-verification: ${SENDGRID_ACCOUNT_VERIFICATION_TEMPLATE_ID}
+  tracking:
+    enable: true
+    click: true
+    open: true
+  retry:
+    max-attempts: 3
+    initial-interval: 1000
+    multiplier: 2.0
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.nexus.notification: DEBUG
+    org.springframework.kafka: INFO
+    org.apache.kafka: WARN
+    com.sendgrid: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/notification-service.log
+    max-size: 100MB
+    max-history: 30
