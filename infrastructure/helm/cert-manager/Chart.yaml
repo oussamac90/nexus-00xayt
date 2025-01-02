@@ -1,0 +1,35 @@
+apiVersion: v2
+name: cert-manager
+version: 1.0.0
+description: Certificate management and automation for Nexus B2B trade platform with multi-region support and security compliance
+type: application
+appVersion: v1.13.0
+
+# Core dependency on jetstack cert-manager chart
+dependencies:
+  - name: cert-manager
+    version: v1.13.0
+    repository: https://charts.jetstack.io
+    condition: cert-manager.enabled
+
+# Additional metadata
+keywords:
+  - certificates
+  - ssl
+  - tls
+  - security
+  - automation
+  - compliance
+  - multi-region
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+# Annotations for compliance and security tracking
+annotations:
+  security.platform.nexus/compliance: "PCI-DSS,ISO-27001,SOC-2"
+  security.platform.nexus/tls-version: "1.3"
+  security.platform.nexus/cert-rotation: "enabled"
+  security.platform.nexus/multi-region: "enabled"
+  security.platform.nexus/audit-logging: "enabled"
