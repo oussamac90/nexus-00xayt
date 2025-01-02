@@ -1,0 +1,140 @@
+<!-- Main marketplace container with error boundary and analytics tracking -->
+<div class="marketplace-container" role="main" 
+     (click)="trackInteraction($event)" 
+     aria-label="B2B Marketplace">
+
+  <!-- Marketplace header with search and controls -->
+  <mat-toolbar class="marketplace-header" color="primary" role="banner">
+    <div class="search-bar">
+      <mat-form-field appearance="outline" class="search-bar__input">
+        <mat-label>Search products</mat-label>
+        <input matInput
+               type="search"
+               [formControl]="searchControl"
+               placeholder="Search by name, eCl@ss code, or GTIN"
+               aria-label="Search products">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <div class="view-toggle" role="group" aria-label="View options">
+      <button mat-icon-button
+              [class.view-toggle__button--active]="viewMode === 'grid'"
+              (click)="onViewModeChange('grid')"
+              aria-label="Grid view">
+        <mat-icon>grid_view</mat-icon>
+      </button>
+      <button mat-icon-button
+              [class.view-toggle__button--active]="viewMode === 'list'"
+              (click)="onViewModeChange('list')"
+              aria-label="List view">
+        <mat-icon>view_list</mat-icon>
+      </button>
+    </div>
+  </mat-toolbar>
+
+  <!-- Main content area with filters and product catalog -->
+  <div class="marketplace-content">
+    <mat-sidenav-container>
+      <!-- Filters panel -->
+      <mat-sidenav #filterSidenav
+                   [mode]="isMobile ? 'over' : 'side'"
+                   [opened]="!isMobile"
+                   class="filters-panel"
+                   role="complementary"
+                   aria-label="Product filters">
+        <form [formGroup]="filterForm" class="filters-form">
+          <!-- Category filter -->
+          <mat-form-field appearance="outline">
+            <mat-label>Category</mat-label>
+            <mat-select formControlName="category"
+                       aria-label="Select category">
+              <mat-option *ngFor="let category of categories" [value]="category.id">
+                {{category.name}}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <!-- eCl@ss code filter -->
+          <mat-form-field appearance="outline">
+            <mat-label>eCl@ss Code</mat-label>
+            <input matInput
+                   formControlName="eclassCode"
+                   placeholder="Enter eCl@ss code"
+                   aria-label="eCl@ss code filter">
+            <mat-error *ngIf="filterForm.get('eclassCode')?.errors?.pattern">
+              Invalid eCl@ss code format
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Price range filter -->
+          <div formGroupName="priceRange" class="price-range">
+            <mat-form-field appearance="outline">
+              <mat-label>Min Price</mat-label>
+              <input matInput
+                     type="number"
+                     formControlName="min"
+                     min="0"
+                     aria-label="Minimum price">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Max Price</mat-label>
+              <input matInput
+                     type="number"
+                     formControlName="max"
+                     min="0"
+                     aria-label="Maximum price">
+            </mat-form-field>
+          </div>
+        </form>
+      </mat-sidenav>
+
+      <!-- Product catalog content -->
+      <mat-sidenav-content>
+        <app-product-catalog
+          [products]="products"
+          [loading]="isLoading"
+          [viewMode]="viewMode"
+          [totalItems]="totalItems"
+          (productSelected)="onProductSelected($event)"
+          (scrolled)="onScroll($event)"
+          (error)="handleError($event)">
+        </app-product-catalog>
+
+        <!-- Loading state -->
+        <div *ngIf="isLoading" class="loading-state" role="status" aria-label="Loading products">
+          <mat-spinner diameter="48"></mat-spinner>
+          <span class="loading-text">Loading products...</span>
+        </div>
+
+        <!-- Error state -->
+        <div *ngIf="error" class="error-state" role="alert">
+          <mat-icon color="warn">error_outline</mat-icon>
+          <p class="error-message">{{error.message}}</p>
+          <button mat-raised-button color="primary" (click)="retryLoading()">
+            Retry
+          </button>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="!isLoading && !error && products.length === 0" 
+             class="empty-state" 
+             role="status">
+          <mat-icon class="empty-state__icon">inventory_2</mat-icon>
+          <h2 class="empty-state__title">No products found</h2>
+          <p class="empty-state__message">Try adjusting your filters or search criteria</p>
+        </div>
+      </mat-sidenav-content>
+    </mat-sidenav-container>
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination
+    *ngIf="products.length > 0"
+    [pageSize]="pageSize"
+    [totalItems]="totalItems"
+    [currentPage]="currentPage"
+    (pageChange)="onPageChange($event)"
+    aria-label="Product pagination">
+  </app-pagination>
+</div>
