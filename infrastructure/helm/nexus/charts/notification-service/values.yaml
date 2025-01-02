@@ -1,0 +1,164 @@
+# Default values for notification-service Helm chart
+# This is a YAML-formatted file.
+
+# Number of replicas for the notification service
+replicaCount: 2
+
+# Maximum number of revisions to keep for rollback
+revisionHistoryLimit: 3
+
+# Image configuration
+image:
+  repository: ${global.imageRegistry}/nexus/notification-service
+  tag: 1.0.0
+  pullPolicy: IfNotPresent
+
+# Image pull secrets configuration
+imagePullSecrets:
+  - name: nexus-registry
+
+# Override name and fullname if needed
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod annotations for Prometheus metrics scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/actuator/prometheus"
+  prometheus.io/port: "8085"
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+
+# Container security context
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8085
+
+# Ingress configuration
+ingress:
+  enabled: false
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Horizontal pod autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector configuration
+nodeSelector: {}
+
+# Tolerations configuration
+tolerations: []
+
+# Affinity configuration for pod anti-affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - notification-service
+          topologyKey: kubernetes.io/hostname
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: ${global.environment}
+  JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseG1GC"
+  SERVER_PORT: "8085"
+  KAFKA_BOOTSTRAP_SERVERS: "nexus-kafka:9092"
+
+# SendGrid configuration secrets
+secrets:
+  sendgrid:
+    apiKey: ""
+    fromEmail: "noreply@nexus.com"
+    templates:
+      welcome: ""
+      orderConfirmation: ""
+      shippingUpdate: ""
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8085
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8085
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Metrics configuration
+metrics:
+  serviceMonitor:
+    enabled: true
+    interval: "30s"
+    scrapeTimeout: "10s"
+    path: /actuator/prometheus
+
+# Kafka configuration
+kafka:
+  enabled: true
+  topics:
+    notifications: "nexus.notifications"
+    userEvents: "nexus.user.events"
+    orderEvents: "nexus.order.events"
+  consumerGroup: "notification-service-group"
+
+# Redis configuration for caching
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: true
+    sentinel: true
+  master:
+    persistence:
+      enabled: true
+      size: "8Gi"
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: "8Gi"
