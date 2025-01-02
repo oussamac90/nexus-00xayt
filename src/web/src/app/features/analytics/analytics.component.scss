@@ -1,0 +1,236 @@
+// Import core design system dependencies
+@use '../../../../../assets/styles/variables' as vars;
+@use '../../../../../assets/styles/mixins' as mix;
+@use '../../../../../assets/styles/themes' as themes;
+
+// Analytics Dashboard Container
+.analytics-dashboard {
+  @include mix.grid-container;
+  @include mix.container;
+  @include themes.theme-background;
+  
+  min-height: 100vh;
+  grid-template-areas: 
+    "header header header"
+    "main main main"
+    "footer footer footer";
+  
+  // Responsive layout adjustments
+  @include mix.mobile-only {
+    grid-template-columns: 1fr;
+    padding: vars.$spacing-sm;
+    gap: vars.$spacing-sm;
+  }
+
+  @include mix.tablet-up {
+    grid-template-columns: repeat(2, 1fr);
+    padding: vars.$spacing-md;
+    gap: vars.$spacing-md;
+  }
+
+  @include mix.desktop-up {
+    grid-template-columns: repeat(3, 1fr);
+    padding: vars.$spacing-lg;
+    gap: vars.$spacing-lg;
+  }
+}
+
+// Metrics Card Component
+.metrics-card {
+  @include themes.theme-background;
+  @include themes.theme-elevation(1);
+  @include mix.focus-ring;
+
+  border-radius: vars.$border-radius-md;
+  padding: vars.$spacing-md;
+  transition: transform vars.$animation-duration-base vars.$animation-timing-function;
+  will-change: transform;
+  
+  // Interactive states
+  &:hover {
+    @include themes.theme-elevation(2);
+    transform: translateY(-2px);
+  }
+
+  // Loading state
+  &--loading {
+    position: relative;
+    overflow: hidden;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+      );
+      animation: shimmer 1.5s infinite;
+    }
+  }
+
+  // Error state
+  &--error {
+    border: vars.$border-width-thin vars.$border-style-solid vars.$color-error;
+    
+    .error-message {
+      color: vars.$color-error;
+      font-size: vars.$font-size-small;
+      margin-top: vars.$spacing-xs;
+    }
+  }
+}
+
+// Chart Container
+.chart-container {
+  @include mix.grid-container(1, vars.$spacing-md);
+  height: 300px;
+  margin: vars.$spacing-md 0;
+
+  @include mix.tablet-up {
+    height: 400px;
+  }
+
+  @include mix.desktop-up {
+    height: 500px;
+  }
+}
+
+// Metrics Grid Layout
+.metrics-grid {
+  display: grid;
+  gap: vars.$spacing-md;
+  
+  @include mix.mobile-only {
+    grid-template-columns: 1fr;
+  }
+
+  @include mix.tablet-up {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include mix.desktop-up {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+// KPI Indicators
+.kpi-indicator {
+  @include mix.flex-center;
+  gap: vars.$spacing-sm;
+  
+  &__value {
+    @include mix.font-smoothing;
+    font-size: vars.$font-size-h2;
+    font-weight: vars.$font-weight-bold;
+    color: vars.$color-primary;
+  }
+  
+  &__label {
+    font-size: vars.$font-size-small;
+    color: vars.$color-text-secondary;
+  }
+
+  &__trend {
+    &--positive {
+      color: vars.$color-success;
+    }
+    
+    &--negative {
+      color: vars.$color-error;
+    }
+  }
+}
+
+// Data Table
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: vars.$spacing-md 0;
+  
+  th, td {
+    padding: vars.$spacing-sm;
+    text-align: left;
+    border-bottom: vars.$border-width-thin vars.$border-style-solid vars.$color-border;
+  }
+  
+  th {
+    font-weight: vars.$font-weight-medium;
+    color: vars.$color-text-secondary;
+  }
+  
+  tbody tr {
+    @include themes.theme-transition;
+    
+    &:hover {
+      background-color: rgba(vars.$color-primary, 0.05);
+    }
+  }
+}
+
+// Animation Keyframes
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+// Print Styles
+@media print {
+  .analytics-dashboard {
+    display: block;
+    padding: 0;
+  }
+
+  .metrics-card {
+    break-inside: avoid;
+    margin-bottom: vars.$spacing-lg;
+    box-shadow: none;
+    border: vars.$border-width-thin vars.$border-style-solid vars.$color-border;
+  }
+
+  .chart-container {
+    height: 400px;
+    page-break-inside: avoid;
+  }
+}
+
+// High Contrast Mode Support
+@media (forced-colors: active) {
+  .metrics-card {
+    border: vars.$border-width-thin vars.$border-style-solid CanvasText;
+  }
+
+  .kpi-indicator__value {
+    color: CanvasText;
+  }
+
+  .data-table {
+    th, td {
+      border-color: CanvasText;
+    }
+  }
+}
+
+// Reduced Motion Support
+@media (prefers-reduced-motion: reduce) {
+  .metrics-card {
+    transition: none;
+    
+    &:hover {
+      transform: none;
+    }
+  }
+
+  .metrics-card--loading::after {
+    animation: none;
+  }
+}
