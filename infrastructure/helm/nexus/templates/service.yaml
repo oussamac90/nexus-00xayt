@@ -1,0 +1,81 @@
+{{/* Service template for Nexus platform microservices */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "nexus.fullname" . }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.monitoring.enabled }}
+    prometheus.io/scrape: "{{ .Values.monitoring.enabled }}"
+    prometheus.io/port: "{{ .Values.monitoring.port }}"
+    prometheus.io/path: "{{ .Values.monitoring.path | default "/metrics" }}"
+    {{- end }}
+    {{- if eq .Values.service.type "LoadBalancer" }}
+    service.beta.kubernetes.io/aws-load-balancer-type: "{{ .Values.service.loadBalancerType | default "nlb" }}"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "60"
+    {{- if .Values.service.internalLoadBalancer }}
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+    {{- end }}
+    {{- end }}
+    {{- if .Values.istio.enabled }}
+    networking.istio.io/exportTo: "."
+    {{- end }}
+    {{- with .Values.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  ports:
+    {{- range .Values.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort | default .name }}
+      protocol: {{ .protocol | default "TCP" }}
+      name: {{ .name }}
+      {{- if and (eq $.Values.service.type "NodePort") .nodePort }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - port: {{ .Values.monitoring.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: http-metrics
+    {{- end }}
+    {{- if .Values.istio.enabled }}
+    - port: 15014
+      targetPort: 15014
+      protocol: TCP
+      name: http-monitoring
+    - port: 15021
+      targetPort: 15021
+      protocol: TCP
+      name: http-health
+    {{- end }}
+  selector:
+    {{- include "nexus.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+  {{- end }}
+  {{- if eq .Values.service.type "LoadBalancer" }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | default "Local" }}
+  {{- if .Values.service.healthCheckNodePort }}
+  healthCheckNodePort: {{ .Values.service.healthCheckNodePort }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ .Values.service.ipFamilyPolicy }}
+  {{- end }}
+  {{- with .Values.service.ipFamilies }}
+  ipFamilies:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.topologyKeys }}
+  topologyKeys:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
