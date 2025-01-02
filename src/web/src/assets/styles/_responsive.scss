@@ -1,0 +1,229 @@
+// Import required variables and mixins
+@use 'variables' as vars;
+@use 'mixins' as mix;
+@use 'sass:math';
+
+// ==========================================================================
+// Responsive Visibility Classes
+// ==========================================================================
+
+.hide-mobile {
+  @include mix.mobile-only {
+    display: none !important;
+  }
+}
+
+.hide-tablet {
+  @include mix.tablet-up {
+    @include mix.respond-to('md') {
+      display: none !important;
+    }
+  }
+}
+
+.hide-desktop {
+  @include mix.desktop-up {
+    display: none !important;
+  }
+}
+
+// ==========================================================================
+// Responsive Container Classes
+// ==========================================================================
+
+.container-fluid {
+  width: 100%;
+  padding-right: vars.$container-padding-mobile;
+  padding-left: vars.$container-padding-mobile;
+  margin-right: auto;
+  margin-left: auto;
+  
+  @include mix.tablet-up {
+    padding-right: vars.$container-padding-tablet;
+    padding-left: vars.$container-padding-tablet;
+  }
+  
+  @include mix.desktop-up {
+    padding-right: vars.$container-padding-desktop;
+    padding-left: vars.$container-padding-desktop;
+  }
+}
+
+.container-fixed {
+  @extend .container-fluid;
+  max-width: vars.$container-max-width;
+}
+
+// ==========================================================================
+// Responsive Grid System
+// ==========================================================================
+
+.row-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -(vars.$grid-gutter / 2);
+  margin-left: -(vars.$grid-gutter / 2);
+}
+
+@for $i from 1 through vars.$grid-columns {
+  .col-responsive-#{$i} {
+    flex: 0 0 percentage(math.div($i, vars.$grid-columns));
+    max-width: percentage(math.div($i, vars.$grid-columns));
+    padding-right: vars.$grid-gutter / 2;
+    padding-left: vars.$grid-gutter / 2;
+  }
+}
+
+// Mobile-first grid columns
+@for $i from 1 through vars.$grid-columns {
+  .col-xs-#{$i} {
+    @include mix.mobile-only {
+      flex: 0 0 percentage(math.div($i, vars.$grid-columns));
+      max-width: percentage(math.div($i, vars.$grid-columns));
+    }
+  }
+}
+
+// Tablet grid columns
+@for $i from 1 through vars.$grid-columns {
+  .col-sm-#{$i} {
+    @include mix.tablet-up {
+      flex: 0 0 percentage(math.div($i, vars.$grid-columns));
+      max-width: percentage(math.div($i, vars.$grid-columns));
+    }
+  }
+}
+
+// Desktop grid columns
+@for $i from 1 through vars.$grid-columns {
+  .col-md-#{$i} {
+    @include mix.desktop-up {
+      flex: 0 0 percentage(math.div($i, vars.$grid-columns));
+      max-width: percentage(math.div($i, vars.$grid-columns));
+    }
+  }
+}
+
+// ==========================================================================
+// Responsive Typography
+// ==========================================================================
+
+.typography-responsive {
+  font-size: vars.$font-size-base;
+  line-height: vars.$line-height-base;
+
+  @include mix.mobile-only {
+    font-size: math.div(vars.$font-size-base * 0.875, 1px) * 1px;
+  }
+
+  h1 {
+    font-size: vars.$font-size-h1;
+    @include mix.mobile-only {
+      font-size: math.div(vars.$font-size-h1 * 0.75, 1px) * 1px;
+    }
+  }
+
+  h2 {
+    font-size: vars.$font-size-h2;
+    @include mix.mobile-only {
+      font-size: math.div(vars.$font-size-h2 * 0.8, 1px) * 1px;
+    }
+  }
+
+  h3 {
+    font-size: vars.$font-size-h3;
+    @include mix.mobile-only {
+      font-size: math.div(vars.$font-size-h3 * 0.85, 1px) * 1px;
+    }
+  }
+}
+
+// ==========================================================================
+// Responsive Spacing
+// ==========================================================================
+
+.spacing-responsive {
+  @include mix.mobile-only {
+    @include mix.spacing('xs', padding);
+    @include mix.spacing('sm', margin);
+  }
+
+  @include mix.tablet-up {
+    @include mix.spacing('sm', padding);
+    @include mix.spacing('md', margin);
+  }
+
+  @include mix.desktop-up {
+    @include mix.spacing('md', padding);
+    @include mix.spacing('lg', margin);
+  }
+}
+
+// ==========================================================================
+// Responsive Flex Order
+// ==========================================================================
+
+.flex-order-responsive {
+  @for $i from -1 through 12 {
+    &-#{$i} {
+      @include mix.mobile-only {
+        order: $i;
+      }
+    }
+  }
+}
+
+// ==========================================================================
+// Responsive Grid Nesting
+// ==========================================================================
+
+.grid-nested {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: vars.$grid-gutter;
+
+  @include mix.mobile-only {
+    gap: math.div(vars.$grid-gutter, 2);
+  }
+
+  &-compact {
+    gap: math.div(vars.$grid-gutter, 2);
+    
+    @include mix.mobile-only {
+      gap: math.div(vars.$grid-gutter, 4);
+    }
+  }
+}
+
+// ==========================================================================
+// Material Design Elevation Support
+// ==========================================================================
+
+.elevation-responsive {
+  @include mix.mobile-only {
+    @include mix.elevation(1);
+  }
+
+  @include mix.tablet-up {
+    @include mix.elevation(2);
+  }
+
+  @include mix.desktop-up {
+    @include mix.elevation(3);
+  }
+}
+
+// ==========================================================================
+// Performance Optimizations
+// ==========================================================================
+
+.container-fluid,
+.container-fixed,
+.row-responsive,
+.grid-nested {
+  contain: layout style;
+}
+
+[class*="col-"] {
+  contain: layout style paint;
+}
