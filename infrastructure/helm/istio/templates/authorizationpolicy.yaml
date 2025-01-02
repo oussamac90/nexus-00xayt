@@ -1,0 +1,133 @@
+{{/* Istio AuthorizationPolicy Template for Nexus B2B Platform */}}
+{{/* Version: 1.0 */}}
+{{/* Implements comprehensive zero-trust security with fine-grained RBAC */}}
+
+{{- define "istio.authorizationPolicy" -}}
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ .Release.Name }}-auth-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+    version: {{ .Values.version | default "v1" }}
+    part-of: nexus-platform
+    managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+      version: {{ .Values.version | default "v1" }}
+  action: ALLOW
+  rules:
+    # User Service Access Rules
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/user-service"]
+            namespaces: ["{{ .Release.Namespace }}"]
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "DELETE"]
+            paths: ["/api/v1/users/*"]
+            hosts: ["user-service.{{ .Release.Namespace }}.svc.cluster.local"]
+      when:
+        - key: request.auth.claims[iss]
+          values: ["{{ .Values.security.jwt.issuer | default "https://auth.nexus.com" }}"]
+
+    # Product Service Access Rules
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/product-service"]
+            namespaces: ["{{ .Release.Namespace }}"]
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "DELETE"]
+            paths: ["/api/v1/products/*"]
+            hosts: ["product-service.{{ .Release.Namespace }}.svc.cluster.local"]
+      when:
+        - key: request.auth.claims[iss]
+          values: ["{{ .Values.security.jwt.issuer | default "https://auth.nexus.com" }}"]
+
+    # Order Service Access Rules
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/order-service"]
+            namespaces: ["{{ .Release.Namespace }}"]
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "PATCH"]
+            paths: ["/api/v1/orders/*"]
+            hosts: ["order-service.{{ .Release.Namespace }}.svc.cluster.local"]
+      when:
+        - key: request.auth.claims[iss]
+          values: ["{{ .Values.security.jwt.issuer | default "https://auth.nexus.com" }}"]
+        - key: request.auth.claims[scope]
+          values: ["order.write", "order.read"]
+
+    # Payment Service Access Rules (Enhanced Security)
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/payment-service"]
+            namespaces: ["{{ .Release.Namespace }}"]
+      to:
+        - operation:
+            methods: ["POST", "PUT"]
+            paths: ["/api/v1/payments/*"]
+            hosts: ["payment-service.{{ .Release.Namespace }}.svc.cluster.local"]
+      when:
+        - key: request.auth.claims[iss]
+          values: ["{{ .Values.security.jwt.issuer | default "https://auth.nexus.com" }}"]
+        - key: request.auth.claims[scope]
+          values: ["payment.process"]
+        - key: connection.sni
+          values: ["payment-service.{{ .Release.Namespace }}.svc.cluster.local"]
+
+    # Analytics Service Access Rules (Admin Only)
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/analytics-service"]
+            namespaces: ["{{ .Release.Namespace }}"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api/v1/analytics/*"]
+            hosts: ["analytics-service.{{ .Release.Namespace }}.svc.cluster.local"]
+      when:
+        - key: request.auth.claims[iss]
+          values: ["{{ .Values.security.jwt.issuer | default "https://auth.nexus.com" }}"]
+        - key: request.auth.claims[role]
+          values: ["admin"]
+
+    # Health Check Access Rules
+    - from:
+        - source:
+            principals: ["cluster.local/ns/*/sa/*"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness"]
+            hosts: ["*.{{ .Release.Namespace }}.svc.cluster.local"]
+
+    # mTLS Enforcement
+    - from:
+        - source:
+            principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/*"]
+            notPrincipals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]
+      to:
+        - operation:
+            methods: ["*"]
+            paths: ["*"]
+      when:
+        - key: connection.mtls.mode
+          values: ["STRICT"]
+
+  # Default deny all other traffic
+  {{- if .Values.security.defaultDeny }}
+  default: DENY
+  {{- end }}
+{{- end }}
+
+{{/* Generate the authorization policies */}}
+{{- if .Values.authorizationPolicy.enabled }}
+{{- template "istio.authorizationPolicy" . }}
+{{- end }}
