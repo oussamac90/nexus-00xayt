@@ -1,0 +1,129 @@
+<div class="shipping-container" role="main" aria-label="Shipping Management Interface">
+  <!-- Loading Progress Bar -->
+  <mat-progress-bar 
+    *ngIf="loading"
+    mode="indeterminate"
+    color="primary"
+    aria-label="Loading shipping information"
+    class="shipping-progress">
+  </mat-progress-bar>
+
+  <!-- Main Tab Navigation -->
+  <mat-tab-group 
+    [selectedIndex]="selectedTabIndex"
+    (selectedTabChange)="onTabChange($event)"
+    animationDuration="200ms"
+    dynamicHeight="true"
+    class="shipping-tabs"
+    aria-label="Shipping Management Options">
+
+    <!-- Tracking Tab -->
+    <mat-tab 
+      label="Shipment Tracking" 
+      role="tabpanel"
+      aria-label="Shipment Tracking Section">
+      <div class="tracking-section">
+        <app-shipment-tracking
+          [shipmentNumber]="currentShipmentNumber"
+          [loading]="trackingLoading"
+          [error]="trackingError"
+          (retry)="onTrackingRetry()">
+        </app-shipment-tracking>
+      </div>
+    </mat-tab>
+
+    <!-- Rates Tab -->
+    <mat-tab 
+      label="Shipping Rates" 
+      role="tabpanel"
+      aria-label="Shipping Rates Section">
+      <div class="rates-section">
+        <app-shipping-rates
+          [loading]="ratesLoading"
+          [error]="ratesError"
+          (rateSelected)="onRateSelected($event)"
+          (retry)="onRatesRetry()">
+        </app-shipping-rates>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+
+  <!-- Error Display -->
+  <div 
+    *ngIf="error"
+    class="error-message" 
+    role="alert"
+    aria-live="polite">
+    <mat-error>
+      {{ error }}
+    </mat-error>
+  </div>
+</div>
+
+<!-- CSS Styles -->
+<style>
+  .shipping-container {
+    padding: var(--container-padding);
+    min-height: 400px;
+    position: relative;
+  }
+
+  .shipping-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+  }
+
+  .shipping-tabs {
+    margin-top: var(--spacing-md);
+  }
+
+  .tracking-section,
+  .rates-section {
+    padding: var(--spacing-lg);
+  }
+
+  .error-message {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+  }
+
+  /* Responsive Styles */
+  @media (max-width: 768px) {
+    .shipping-container {
+      padding: var(--container-padding-mobile);
+    }
+
+    .tracking-section,
+    .rates-section {
+      padding: var(--spacing-md);
+    }
+  }
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .shipping-container {
+      padding: var(--container-padding-tablet);
+    }
+  }
+
+  @media (min-width: 1025px) {
+    .shipping-container {
+      padding: var(--container-padding-desktop);
+    }
+  }
+
+  /* High Contrast Mode Support */
+  @media (forced-colors: active) {
+    .shipping-container {
+      border: 1px solid CanvasText;
+    }
+
+    .error-message {
+      border: 1px solid CanvasText;
+    }
+  }
+</style>
