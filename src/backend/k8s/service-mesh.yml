@@ -1,0 +1,211 @@
+# Istio Service Mesh Configuration for Nexus Platform
+# Version: 1.18+
+# Implements comprehensive traffic management, zero-trust security, and observability
+
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: nexus-istio-control-plane
+  namespace: istio-system
+spec:
+  profile: default
+  components:
+    # Control plane configuration
+    pilot:
+      k8s:
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "4Gi"
+          limits:
+            cpu: "2000m"
+            memory: "8Gi"
+        replicaCount: 3
+        hpaSpec:
+          maxReplicas: 5
+          minReplicas: 3
+        nodeSelector:
+          node-type: infrastructure
+        tolerations:
+          - key: "node-type"
+            operator: "Equal"
+            value: "infrastructure"
+            effect: "NoSchedule"
+
+    # Ingress gateway configuration
+    ingressGateways:
+      - name: nexus-gateway
+        enabled: true
+        k8s:
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          replicaCount: 3
+          service:
+            type: LoadBalancer
+            ports:
+              - port: 80
+                targetPort: 8080
+                name: http
+              - port: 443
+                targetPort: 8443
+                name: https
+
+  values:
+    global:
+      # Multi-cluster and HA configuration
+      multiCluster:
+        enabled: true
+        clusterName: nexus-prod
+      
+      # Proxy configuration
+      proxy:
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "400m"
+            memory: "512Mi"
+        
+        # Enhanced security settings
+        privileged: false
+        holdApplicationUntilProxyStarts: true
+
+      # mTLS configuration
+      mtls:
+        enabled: true
+        auto: true
+        minProtocolVersion: TLSV1_3
+        cipherSuites:
+          - TLS_AES_256_GCM_SHA384
+          - TLS_CHACHA20_POLY1305_SHA256
+
+    # Telemetry configuration
+    telemetry:
+      enabled: true
+      v2:
+        enabled: true
+        metadataExchange:
+          wasmEnabled: true
+        prometheus:
+          enabled: true
+          configOverride:
+            inboundSidecar:
+              metrics:
+                - name: requests_total
+                  dimensions:
+                    source_cluster: source.cluster.name
+                    destination_cluster: destination.cluster.name
+            outboundSidecar:
+              metrics:
+                - name: requests_total
+                  dimensions:
+                    source_cluster: source.cluster.name
+                    destination_cluster: destination.cluster.name
+
+    # Security configuration
+    security:
+      certificateAuthority:
+        workloadCertTTL: "24h"
+        maxWorkloadCertTTL: "48h"
+      
+      # RBAC configuration
+      rbac:
+        enabled: true
+        mode: ON_WITH_INCLUSION
+
+    # Sidecar injection configuration
+    sidecarInjectorWebhook:
+      enabled: true
+      rewriteAppHTTPProbe: true
+      templates:
+        nexus: |
+          initContainers:
+          - name: istio-init
+            securityContext:
+              runAsUser: 1337
+              runAsGroup: 1337
+          containers:
+          - name: istio-proxy
+            securityContext:
+              runAsUser: 1337
+              runAsGroup: 1337
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+
+    # Traffic management configuration
+    pilot:
+      enabled: true
+      autoscaleEnabled: true
+      autoscaleMin: 3
+      autoscaleMax: 5
+      replicaCount: 3
+      traceSampling: 1.0
+      resources:
+        requests:
+          cpu: "1000m"
+          memory: "4Gi"
+        limits:
+          cpu: "2000m"
+          memory: "8Gi"
+      env:
+        PILOT_TRACE_SAMPLING: "100"
+        PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_OUTBOUND: "true"
+        PILOT_ENABLE_PROTOCOL_SNIFFING_FOR_INBOUND: "true"
+
+    # Mesh configuration
+    meshConfig:
+      enableTracing: true
+      defaultConfig:
+        tracing:
+          sampling: 100.0
+          zipkin:
+            address: jaeger-collector.monitoring:9411
+        proxyMetadata:
+          ISTIO_META_DNS_CAPTURE: "true"
+          ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+      accessLogFile: "/dev/stdout"
+      accessLogEncoding: JSON
+      accessLogFormat: |
+        {
+          "protocol": "%PROTOCOL%",
+          "upstream_service": "%UPSTREAM_SERVICE%",
+          "response_code": "%RESPONSE_CODE%",
+          "response_flags": "%RESPONSE_FLAGS%",
+          "response_code_details": "%RESPONSE_CODE_DETAILS%",
+          "connection_termination_details": "%CONNECTION_TERMINATION_DETAILS%",
+          "upstream_host": "%UPSTREAM_HOST%",
+          "user_agent": "%REQ(USER-AGENT)%",
+          "request_id": "%REQ(X-REQUEST-ID)%",
+          "upstream_cluster": "%UPSTREAM_CLUSTER%",
+          "upstream_local_address": "%UPSTREAM_LOCAL_ADDRESS%",
+          "downstream_local_address": "%DOWNSTREAM_LOCAL_ADDRESS%",
+          "downstream_remote_address": "%DOWNSTREAM_REMOTE_ADDRESS%",
+          "requested_server_name": "%REQUESTED_SERVER_NAME%",
+          "route_name": "%ROUTE_NAME%"
+        }
+
+    # Gateway configuration
+    gateways:
+      istio-ingressgateway:
+        autoscaleEnabled: true
+        autoscaleMin: 3
+        autoscaleMax: 5
+        serviceAnnotations:
+          service.beta.kubernetes.io/aws-load-balancer-type: nlb
+        ports:
+          - port: 80
+            targetPort: 8080
+            name: http2
+            protocol: TCP
+          - port: 443
+            targetPort: 8443
+            name: https
+            protocol: TCP
