@@ -1,0 +1,30 @@
+# Supports Angular 16.x and Material Design features
+# Ensures optimal performance for 100,000 concurrent users
+
+# Target modern versions of major browsers
+last 2 versions
+> 0.5%
+not dead
+
+# Chrome (Primary Enterprise Target)
+Chrome >= 61
+
+# Firefox (Secondary Target)
+Firefox >= 60
+
+# Safari Support
+Safari >= 11
+
+# Modern Edge (Chromium-based)
+Edge >= 79
+
+# Explicit Exclusions
+not IE 11
+
+# Production Optimization
+not op_mini all
+not android <= 4.4.4
+not ios_saf <= 11
+
+# Development Support
+maintained node versions
