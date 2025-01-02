@@ -1,0 +1,277 @@
+{{/* Generate common labels for Alertmanager resources */}}
+{{- define "alertmanager.labels" -}}
+app.kubernetes.io/name: alertmanager
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Chart.AppVersion }}
+app.kubernetes.io/component: monitoring
+app.kubernetes.io/part-of: nexus-platform
+security.nexus.com/monitored: "true"
+backup.nexus.com/enabled: "true"
+{{- end }}
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    {{- include "alertmanager.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.prometheus.alertmanager.replicaCount | default 2 }}
+  serviceName: {{ .Release.Name }}-alertmanager
+  selector:
+    matchLabels:
+      {{- include "alertmanager.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alertmanager.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/alertmanager-config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}-alertmanager
+      securityContext:
+        {{- toYaml .Values.prometheus.alertmanager.securityContext | nindent 8 }}
+      containers:
+        - name: alertmanager
+          image: "{{ .Values.global.imageRegistry }}/prometheus/alertmanager:v0.25.0"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          args:
+            - "--config.file=/etc/alertmanager/alertmanager.yml"
+            - "--storage.path=/alertmanager"
+            - "--cluster.listen-address=0.0.0.0:9094"
+            - "--cluster.peer={{ .Release.Name }}-alertmanager-0.{{ .Release.Name }}-alertmanager:9094"
+            - "--cluster.peer={{ .Release.Name }}-alertmanager-1.{{ .Release.Name }}-alertmanager:9094"
+            - "--web.external-url=https://alertmanager.{{ .Values.global.domain }}"
+          ports:
+            - containerPort: 9093
+              name: http
+            - containerPort: 9094
+              name: cluster
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 200m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager
+            - name: storage
+              mountPath: /alertmanager
+            - name: tls
+              mountPath: /etc/alertmanager/tls
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-alertmanager-config
+        - name: tls
+          secret:
+            secretName: {{ .Release.Name }}-alertmanager-tls
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+        labels:
+          {{- include "alertmanager.labels" . | nindent 10 }}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.alertmanager.persistence.size }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-alertmanager-config
+  labels:
+    {{- include "alertmanager.labels" . | nindent 4 }}
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      smtp_smarthost: 'smtp.nexus.com:587'
+      smtp_from: 'alertmanager@nexus.com'
+      smtp_auth_username: '{{ .Values.alertmanager.smtp.username }}'
+      smtp_auth_password: '{{ .Values.alertmanager.smtp.password }}'
+      pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+      slack_api_url: '{{ .Values.alertmanager.slack.webhookUrl }}'
+
+    templates:
+      - '/etc/alertmanager/templates/*.tmpl'
+
+    route:
+      receiver: 'default'
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - match:
+            severity: critical
+          receiver: pagerduty-critical
+          group_wait: 0s
+          repeat_interval: 1h
+          continue: true
+
+        - match:
+            severity: high
+          receiver: slack-high
+          group_wait: 1m
+          group_interval: 5m
+          repeat_interval: 2h
+
+        - match:
+            severity: medium
+          receiver: slack-medium
+          group_wait: 5m
+          group_interval: 15m
+          repeat_interval: 4h
+
+        - match:
+            severity: low
+          receiver: email-low
+          group_wait: 10m
+          group_interval: 30m
+          repeat_interval: 12h
+
+    inhibit_rules:
+      - source_match:
+          severity: critical
+        target_match:
+          severity: high
+        equal: ['alertname', 'cluster', 'service']
+
+    receivers:
+      - name: 'default'
+        email_configs:
+          - to: 'alerts@nexus.com'
+            send_resolved: true
+
+      - name: 'pagerduty-critical'
+        pagerduty_configs:
+          - service_key: '{{ .Values.alertmanager.pagerduty.serviceKey }}'
+            send_resolved: true
+            severity: critical
+
+      - name: 'slack-high'
+        slack_configs:
+          - channel: '#alerts-high'
+            send_resolved: true
+            title: '{{ template "slack.title" . }}'
+            text: '{{ template "slack.text" . }}'
+            color: 'danger'
+
+      - name: 'slack-medium'
+        slack_configs:
+          - channel: '#alerts-medium'
+            send_resolved: true
+            title: '{{ template "slack.title" . }}'
+            text: '{{ template "slack.text" . }}'
+            color: 'warning'
+
+      - name: 'email-low'
+        email_configs:
+          - to: 'monitoring@nexus.com'
+            send_resolved: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    {{- include "alertmanager.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9093
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 9094
+      targetPort: cluster
+      protocol: TCP
+      name: cluster
+  selector:
+    {{- include "alertmanager.labels" . | nindent 4 }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    {{- include "alertmanager.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "alertmanager.labels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 9093
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "alertmanager.labels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9094
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "alertmanager.labels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 9094
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 587
+        - protocol: TCP
+          port: 443
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    {{- include "alertmanager.labels" . | nindent 4 }}
+spec:
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /metrics
+  selector:
+    matchLabels:
+      {{- include "alertmanager.labels" . | nindent 6 }}
