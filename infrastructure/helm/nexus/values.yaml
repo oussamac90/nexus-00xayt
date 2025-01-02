@@ -1,0 +1,262 @@
+# Global configuration values shared across all services
+global:
+  # Environment configuration
+  environment: ${ENVIRONMENT:-production}
+  imageRegistry: ${IMAGE_REGISTRY:-nexus.azurecr.io}
+  region: ${REGION:-us-east-1}
+  clusterName: ${CLUSTER_NAME:-nexus-prod}
+  imagePullSecrets:
+    - nexus-registry
+  domain: ${DOMAIN:-nexus.com}
+
+  # Monitoring and observability configuration
+  monitoring:
+    enabled: true
+    prometheus:
+      enabled: true
+      serviceMonitor: true
+      alertRules: true
+      retention: 30d
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+    grafana:
+      enabled: true
+      dashboards: true
+      persistence:
+        enabled: true
+        size: 10Gi
+    jaeger:
+      enabled: true
+      storage:
+        type: elasticsearch
+        options:
+          es:
+            server-urls: ${ELASTICSEARCH_URL}
+            username: ${ELASTICSEARCH_USER}
+            password: ${ELASTICSEARCH_PASSWORD}
+    logging:
+      enabled: true
+      elasticsearch:
+        enabled: true
+        replicas: 3
+        persistence:
+          enabled: true
+          size: 100Gi
+      fluentd:
+        enabled: true
+        configMap: fluentd-config
+      kibana:
+        enabled: true
+
+  # Security configuration
+  security:
+    oauth2:
+      issuerUri: ${AUTH_ISSUER_URI}
+      jwkSetUri: ${AUTH_JWK_SET_URI}
+      clientId: ${OAUTH_CLIENT_ID}
+      clientSecret: ${OAUTH_CLIENT_SECRET}
+      scopes:
+        - openid
+        - profile
+        - email
+    tls:
+      enabled: true
+      certManager: true
+      issuer:
+        kind: ClusterIssuer
+        name: letsencrypt-prod
+    networkPolicies:
+      enabled: true
+      defaultDenyIngress: true
+      defaultDenyEgress: true
+
+  # Storage configuration
+  storage:
+    class: managed-premium
+    backup:
+      enabled: true
+      schedule: "0 1 * * *"
+      retention: 30d
+
+  # Redis configuration
+  redis:
+    enabled: true
+    architecture: replication
+    auth:
+      enabled: true
+      password: ${REDIS_PASSWORD}
+    master:
+      persistence:
+        enabled: true
+        size: 8Gi
+    replica:
+      replicaCount: 2
+      persistence:
+        enabled: true
+        size: 8Gi
+
+  # Kafka configuration
+  kafka:
+    enabled: true
+    replicaCount: 3
+    auth:
+      sasl:
+        enabled: true
+        mechanism: plain
+      tls:
+        enabled: true
+    persistence:
+      enabled: true
+      size: 100Gi
+    zookeeper:
+      enabled: true
+      replicaCount: 3
+      persistence:
+        enabled: true
+        size: 20Gi
+
+# Service-specific configurations
+api-gateway:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+auth-service:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+
+user-service:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+
+product-service:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+
+order-service:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+
+payment-service:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 6
+
+shipping-service:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+
+analytics-service:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+
+notification-service:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
