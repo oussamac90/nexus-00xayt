@@ -1,0 +1,202 @@
+// Import core variables
+@use 'variables' as vars;
+
+// ==========================================================================
+// Responsive Design Mixins
+// ==========================================================================
+
+/**
+ * Generates media queries for responsive design breakpoints with enhanced error handling
+ * @param {String} $breakpoint - Breakpoint name (xs, sm, md, lg)
+ * @throws Error if invalid breakpoint provided
+ */
+@mixin respond-to($breakpoint) {
+  @if not map-has-key((
+    'xs': vars.$breakpoint-xs,
+    'sm': vars.$breakpoint-sm,
+    'md': vars.$breakpoint-md,
+    'lg': vars.$breakpoint-lg
+  ), $breakpoint) {
+    @error 'Invalid breakpoint: #{$breakpoint}. Available breakpoints are: xs, sm, md, lg';
+  }
+
+  $breakpoint-value: map-get((
+    'xs': vars.$breakpoint-xs,
+    'sm': vars.$breakpoint-sm,
+    'md': vars.$breakpoint-md,
+    'lg': vars.$breakpoint-lg
+  ), $breakpoint);
+
+  @media screen and (min-width: $breakpoint-value) {
+    @content;
+  }
+}
+
+/**
+ * Mobile-only styles (up to sm breakpoint)
+ */
+@mixin mobile-only {
+  @media screen and (max-width: vars.$breakpoint-sm - 1) {
+    @content;
+  }
+}
+
+/**
+ * Tablet and up styles (sm breakpoint and above)
+ */
+@mixin tablet-up {
+  @media screen and (min-width: vars.$breakpoint-sm) {
+    @content;
+  }
+}
+
+/**
+ * Desktop and up styles (md breakpoint and above)
+ */
+@mixin desktop-up {
+  @media screen and (min-width: vars.$breakpoint-md) {
+    @content;
+  }
+}
+
+// ==========================================================================
+// Layout Mixins
+// ==========================================================================
+
+/**
+ * Creates a flex container with centered content
+ * @param {String} $direction [row] - Flex direction
+ */
+@mixin flex-center($direction: row) {
+  display: flex;
+  flex-direction: $direction;
+  align-items: center;
+  justify-content: center;
+}
+
+/**
+ * Creates a responsive grid container with Material Design support
+ * @param {Number} $columns [12] - Number of grid columns
+ * @param {String} $gap [vars.$spacing-unit * 3] - Grid gap size
+ */
+@mixin grid-container($columns: 12, $gap: vars.$spacing-unit * 3) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+  width: 100%;
+  max-width: vars.$container-max-width;
+  margin: 0 auto;
+  padding: 0 vars.$container-padding-mobile;
+
+  @include tablet-up {
+    padding: 0 vars.$container-padding-tablet;
+  }
+
+  @include desktop-up {
+    padding: 0 vars.$container-padding-desktop;
+  }
+}
+
+/**
+ * Applies consistent spacing based on design system
+ * @param {String} $size - Spacing size (xs, sm, md, lg, xl, xxl)
+ * @param {String} $property [margin] - CSS property to apply spacing to
+ */
+@mixin spacing($size, $property: margin) {
+  $spacing-map: (
+    'xs': vars.$spacing-xs,
+    'sm': vars.$spacing-sm,
+    'md': vars.$spacing-md,
+    'lg': vars.$spacing-lg,
+    'xl': vars.$spacing-xl,
+    'xxl': vars.$spacing-xxl
+  );
+
+  @if not map-has-key($spacing-map, $size) {
+    @error 'Invalid spacing size: #{$size}. Available sizes are: xs, sm, md, lg, xl, xxl';
+  }
+
+  #{$property}: map-get($spacing-map, $size);
+}
+
+// ==========================================================================
+// Typography Mixins
+// ==========================================================================
+
+/**
+ * Applies text ellipsis for overflow handling
+ * @param {Number} $lines [1] - Number of lines before ellipsis
+ */
+@mixin text-ellipsis($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/**
+ * Applies cross-browser font smoothing
+ */
+@mixin font-smoothing {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+// ==========================================================================
+// Component Styling Mixins
+// ==========================================================================
+
+/**
+ * Applies elevation shadow based on Material Design
+ * @param {Number} $level [1] - Elevation level (1-5)
+ */
+@mixin elevation($level: 1) {
+  $shadows: (
+    1: vars.$elevation-1,
+    2: vars.$elevation-2,
+    3: vars.$elevation-3,
+    4: vars.$elevation-4,
+    5: vars.$elevation-modal
+  );
+
+  @if not map-has-key($shadows, $level) {
+    @error 'Invalid elevation level: #{$level}. Available levels are: 1, 2, 3, 4, 5';
+  }
+
+  box-shadow: map-get($shadows, $level);
+}
+
+/**
+ * Applies focus ring styles for interactive elements
+ */
+@mixin focus-ring {
+  &:focus-visible {
+    outline: vars.$focus-ring-width vars.$focus-ring-style vars.$focus-ring-color;
+    outline-offset: vars.$focus-ring-offset;
+  }
+}
+
+/**
+ * Creates a container with responsive padding
+ */
+@mixin container {
+  width: 100%;
+  max-width: vars.$container-max-width;
+  margin: 0 auto;
+  padding: 0 vars.$container-padding-mobile;
+
+  @include tablet-up {
+    padding: 0 vars.$container-padding-tablet;
+  }
+
+  @include desktop-up {
+    padding: 0 vars.$container-padding-desktop;
+  }
+}
