@@ -1,0 +1,242 @@
+{{/* Version constants */}}
+{{- $elasticsearchVersion := "8.5.1" }}
+{{- $logstashVersion := "8.5.1" }}
+{{- $kibanaVersion := "8.5.1" }}
+
+{{/* Elasticsearch StatefulSet */}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch-master
+  labels:
+    app: elasticsearch
+    role: master
+spec:
+  serviceName: elasticsearch-master
+  replicas: {{ .Values.elasticsearch.replicas }}
+  selector:
+    matchLabels:
+      app: elasticsearch
+      role: master
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+        role: master
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9114"
+    spec:
+      serviceAccountName: elasticsearch
+      securityContext:
+        {{- toYaml .Values.global.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: sysctl
+          image: busybox:1.32
+          command: ['sysctl', '-w', 'vm.max_map_count=262144']
+          securityContext:
+            privileged: true
+        - name: fix-permissions
+          image: busybox:1.32
+          command: ['sh', '-c', 'chown -R 1000:1000 /usr/share/elasticsearch/data']
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      containers:
+        - name: elasticsearch
+          image: "{{ .Values.global.imageRegistry }}/elastic/elasticsearch:{{ $elasticsearchVersion }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+          env:
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: cluster.name
+              value: nexus-elasticsearch
+            - name: discovery.seed_hosts
+              value: "elasticsearch-master-headless"
+            - name: cluster.initial_master_nodes
+              value: "elasticsearch-master-0,elasticsearch-master-1,elasticsearch-master-2"
+            - name: ES_JAVA_OPTS
+              value: "-Xms2g -Xmx2g"
+            - name: xpack.security.enabled
+              value: "{{ .Values.elasticsearch.security.enabled }}"
+            - name: xpack.security.transport.ssl.enabled
+              value: "{{ .Values.elasticsearch.security.tls.enabled }}"
+          ports:
+            - name: http
+              containerPort: 9200
+            - name: transport
+              containerPort: 9300
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+            - name: elasticsearch-config
+              mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              subPath: elasticsearch.yml
+            {{- if .Values.elasticsearch.security.tls.enabled }}
+            - name: elasticsearch-certs
+              mountPath: /usr/share/elasticsearch/config/certs
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: elasticsearch-config
+          configMap:
+            name: elasticsearch-config
+        {{- if .Values.elasticsearch.security.tls.enabled }}
+        - name: elasticsearch-certs
+          secret:
+            secretName: elasticsearch-certs
+        {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.persistence.size }}
+
+---
+{{/* Elasticsearch Service */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-master
+  labels:
+    app: elasticsearch
+    role: master
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+    - name: transport
+      port: 9300
+      targetPort: 9300
+  selector:
+    app: elasticsearch
+    role: master
+
+---
+{{/* Elasticsearch Headless Service for StatefulSet */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-master-headless
+  labels:
+    app: elasticsearch
+    role: master
+spec:
+  clusterIP: None
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+    - name: transport
+      port: 9300
+      targetPort: 9300
+  selector:
+    app: elasticsearch
+    role: master
+
+---
+{{/* Elasticsearch ConfigMap */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-config
+data:
+  elasticsearch.yml: |
+    cluster.name: nexus-elasticsearch
+    network.host: 0.0.0.0
+    discovery.seed_hosts: ["elasticsearch-master-headless"]
+    cluster.initial_master_nodes: ["elasticsearch-master-0","elasticsearch-master-1","elasticsearch-master-2"]
+    xpack.security.enabled: {{ .Values.elasticsearch.security.enabled }}
+    xpack.security.transport.ssl.enabled: {{ .Values.elasticsearch.security.tls.enabled }}
+    {{- if .Values.elasticsearch.security.tls.enabled }}
+    xpack.security.transport.ssl.verification_mode: certificate
+    xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
+    xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
+    {{- end }}
+
+---
+{{/* Elasticsearch ServiceMonitor for Prometheus integration */}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    matchLabels:
+      app: elasticsearch
+      role: master
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /_prometheus/metrics
+
+---
+{{/* Elasticsearch NetworkPolicy */}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: elasticsearch-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: elasticsearch
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: kibana
+        - podSelector:
+            matchLabels:
+              app: logstash
+      ports:
+        - protocol: TCP
+          port: 9200
+        - protocol: TCP
+          port: 9300
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: elasticsearch
+      ports:
+        - protocol: TCP
+          port: 9300
+
+---
+{{/* Elasticsearch PodDisruptionBudget */}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: elasticsearch-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: elasticsearch
+      role: master
