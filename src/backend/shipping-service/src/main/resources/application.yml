@@ -1,0 +1,144 @@
+# Shipping Service Configuration
+# Version: 1.0
+# Enhanced configuration for multi-carrier integration, real-time tracking, and documentation management
+
+spring:
+  application:
+    name: shipping-service
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # Database Configuration with connection pooling
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/nexus_shipping
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      pool-name: ShippingHikariPool
+  
+  # Redis Configuration for caching shipping rates and tracking data
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD}
+    timeout: 2000
+    lettuce:
+      pool:
+        max-active: 50
+        max-idle: 50
+        min-idle: 10
+        time-between-eviction-runs: 30000
+  
+  # Kafka Configuration for shipping events
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS}
+    producer:
+      batch-size: 16384
+      linger.ms: 1
+      compression.type: snappy
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: shipping-service-group
+      auto-offset-reset: latest
+      max.poll.records: 500
+      fetch.min.bytes: 1024
+  
+  # Service Discovery Configuration
+  cloud:
+    discovery:
+      enabled: true
+      service-id: shipping-service
+      metadata:
+        zone: ${ZONE:default}
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8085}
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 2048
+  tomcat:
+    max-threads: 200
+    accept-count: 100
+    connection-timeout: 5000
+    max-connections: 8192
+    keep-alive-timeout: 20000
+
+# Monitoring and Management
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+      base-path: /actuator
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram: true
+      sla: 100ms,500ms
+  health:
+    probes:
+      enabled: true
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    show-details: always
+
+# Resilience Patterns
+resilience4j:
+  circuitbreaker:
+    instances:
+      shipping-service:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+  ratelimiter:
+    instances:
+      shipping-service:
+        limitForPeriod: 1000
+        limitRefreshPeriod: 1s
+        timeoutDuration: 5s
+  bulkhead:
+    instances:
+      shipping-service:
+        maxConcurrentCalls: 50
+        maxWaitDuration: 10ms
+
+# Logging Configuration
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.nexus.shipping: DEBUG
+    org.springframework.web: INFO
+    org.springframework.data: INFO
+    org.springframework.kafka: INFO
+
+# Carrier Integration Settings
+carrier:
+  integration:
+    connection-timeout: 5000
+    read-timeout: 10000
+    retry-attempts: 3
+    rate-cache-ttl: 3600
+    tracking-cache-ttl: 300
