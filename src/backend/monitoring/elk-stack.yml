@@ -1,0 +1,156 @@
+# ELK Stack Configuration v8.8.0
+# Purpose: Centralized logging and monitoring for Nexus B2B trade platform
+
+# Elasticsearch Configuration
+elasticsearch:
+  image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+  cluster_name: nexus-logging
+  node_name: ${NODE_NAME}
+  network_host: 0.0.0.0
+  http:
+    port: 9200
+  discovery:
+    type: single-node
+  xpack.security:
+    enabled: true
+  indices:
+    memory:
+      index_buffer_size: "30%"
+    number_of_shards: 1
+    number_of_replicas: 1
+  path:
+    data: /usr/share/elasticsearch/data
+    logs: /usr/share/elasticsearch/logs
+  bootstrap:
+    memory_lock: true
+  environment:
+    - ES_JAVA_OPTS=-Xms2g -Xmx2g
+
+# Logstash Configuration
+logstash:
+  image: docker.elastic.co/logstash/logstash:8.8.0
+  pipeline:
+    workers: 2
+    batch:
+      size: 125
+      delay: 50
+  inputs:
+    - beats:
+        port: 5044
+        ssl:
+          enabled: true
+          certificate: /etc/logstash/certs/logstash.crt
+          key: /etc/logstash/certs/logstash.key
+          verify_mode: force_peer
+    - kafka:
+        bootstrap_servers: kafka:9092
+        topics: 
+          - application-logs
+          - security-logs
+        group_id: logstash
+        codec: json
+        consumer_threads: 2
+  filters:
+    - grok:
+        match:
+          message: "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{DATA:service} %{DATA:trace_id} - %{GREEDYDATA:msg}"
+        patterns_dir: /etc/logstash/patterns
+    - date:
+        match: ["timestamp", "ISO8601"]
+        target: "@timestamp"
+    - mutate:
+        add_field:
+          environment: ${ENVIRONMENT}
+  outputs:
+    elasticsearch:
+      hosts: ["elasticsearch:9200"]
+      user: ${ES_USERNAME}
+      password: ${ES_PASSWORD}
+      index: "nexus-logs-%{+YYYY.MM.dd}"
+      template_name: "nexus-logs"
+      template_overwrite: true
+      ssl:
+        enabled: true
+        verification_mode: certificate
+
+# Kibana Configuration
+kibana:
+  image: docker.elastic.co/kibana/kibana:8.8.0
+  server:
+    name: nexus-kibana
+    host: 0.0.0.0
+    port: 5601
+  elasticsearch:
+    hosts: ["http://elasticsearch:9200"]
+    username: ${ES_USERNAME}
+    password: ${ES_PASSWORD}
+    ssl:
+      verificationMode: certificate
+  monitoring:
+    ui:
+      container:
+        elasticsearch:
+          enabled: true
+  xpack:
+    security:
+      enabled: true
+      encryptionKey: ${ENCRYPTION_KEY}
+    reporting:
+      enabled: true
+      encryptionKey: ${REPORTING_KEY}
+    monitoring:
+      enabled: true
+    graph:
+      enabled: false
+
+# Filebeat Configuration
+filebeat:
+  image: docker.elastic.co/beats/filebeat:8.8.0
+  inputs:
+    - type: container
+      paths:
+        - /var/lib/docker/containers/*/*.log
+      processors:
+        - add_kubernetes_metadata:
+            in_cluster: true
+        - add_docker_metadata:
+            host: "unix:///var/run/docker.sock"
+        - add_host_metadata:
+            netinfo.enabled: true
+  output:
+    logstash:
+      hosts: ["logstash:5044"]
+      ssl:
+        certificate: /etc/filebeat/certs/filebeat.crt
+        key: /etc/filebeat/certs/filebeat.key
+        certificate_authorities: ["/etc/filebeat/certs/ca.crt"]
+        verification_mode: strict
+  logging:
+    level: info
+    to_files: true
+    files:
+      path: /var/log/filebeat
+      name: filebeat.log
+      rotateeverybytes: 10485760
+
+# Common Settings
+volumes:
+  elasticsearch-data:
+  elasticsearch-logs:
+  logstash-data:
+  kibana-data:
+  filebeat-data:
+
+networks:
+  elk-network:
+    driver: bridge
+
+secrets:
+  elasticsearch_keystore:
+    file: ./certs/elasticsearch.keystore
+  logstash_keystore:
+    file: ./certs/logstash.keystore
+  kibana_keystore:
+    file: ./certs/kibana.keystore
+  filebeat_keystore:
+    file: ./certs/filebeat.keystore
