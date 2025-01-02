@@ -1,0 +1,195 @@
+name: Deploy Nexus Platform
+
+on:
+  push:
+    branches: 
+      - main
+      - 'release/*'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: 'Deployment Environment'
+        required: true
+        options:
+          - development
+          - staging 
+          - production
+      version:
+        type: string
+        description: 'Version to deploy'
+        required: true
+      skip_tests:
+        type: boolean
+        description: 'Skip tests'
+        default: false
+      force_deploy:
+        type: boolean
+        description: 'Force deployment'
+        default: false
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  SECONDARY_REGION: ${{ secrets.SECONDARY_REGION }}
+  CLUSTER_NAME: nexus-${{ github.event.inputs.environment || 'development' }}
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'development' }}
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  validate:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Validate environment
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ env.ENVIRONMENT }}" == "production" ]]; then
+            echo "Error: Cannot deploy to production from main branch"
+            exit 1
+          fi
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v && "${{ env.ENVIRONMENT }}" != "production" ]]; then
+            echo "Error: Tags can only deploy to production"
+            exit 1
+          fi
+
+      - name: Check required secrets
+        run: |
+          required_secrets=(
+            "AWS_ACCESS_KEY_ID"
+            "AWS_SECRET_ACCESS_KEY"
+            "DOCKER_REGISTRY"
+            "KUBE_CONFIG"
+            "ARGOCD_AUTH_TOKEN"
+          )
+          for secret in "${required_secrets[@]}"; do
+            if [[ -z "${{ secrets[secret] }}" ]]; then
+              echo "Error: Required secret $secret is not set"
+              exit 1
+            fi
+          done
+
+  security-scan:
+    name: Security Scan
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run SAST scan
+        run: |
+          # Implement SAST scanning
+          echo "Running security scan..."
+
+      - name: Run dependency scan
+        run: |
+          # Implement dependency scanning
+          echo "Running dependency scan..."
+
+      - name: Run container scan
+        run: |
+          # Implement container scanning
+          echo "Running container scan..."
+
+  build:
+    name: Build and Push
+    needs: security-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/nexus-api:${{ env.VERSION }}
+            ${{ env.DOCKER_REGISTRY }}/nexus-web:${{ env.VERSION }}
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ env.ENVIRONMENT }}
+      url: ${{ env.ENVIRONMENT == 'production' && 'https://nexus.com' || format('https://{0}.nexus.com', env.ENVIRONMENT) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy infrastructure
+        run: |
+          chmod +x ./infrastructure/scripts/deploy.sh
+          ./infrastructure/scripts/deploy.sh \
+            --environment ${{ env.ENVIRONMENT }} \
+            --version ${{ env.VERSION }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Verify deployment
+        run: |
+          # Wait for deployment to complete
+          kubectl rollout status deployment/api-gateway -n nexus
+          kubectl rollout status deployment/nexus-web -n nexus
+
+      - name: Run smoke tests
+        if: ${{ !github.event.inputs.skip_tests }}
+        run: |
+          # Implement smoke tests
+          echo "Running smoke tests..."
+
+      - name: Configure monitoring
+        run: |
+          # Setup monitoring and alerts
+          echo "Configuring monitoring..."
+
+  post-deploy:
+    name: Post Deployment Tasks
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update documentation
+        run: |
+          # Update deployment documentation
+          echo "Updating documentation..."
+
+      - name: Send notifications
+        if: always()
+        run: |
+          # Send deployment notifications
+          echo "Sending notifications..."
+
+      - name: Cleanup
+        if: always()
+        run: |
+          # Cleanup temporary resources
+          echo "Cleaning up..."
