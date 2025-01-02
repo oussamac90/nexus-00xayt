@@ -1,0 +1,200 @@
+// Import core styles and themes
+@use '@angular/material/theming' as mat;
+@use '../../assets/styles/variables' as vars;
+@use '../../assets/styles/mixins' as mix;
+@use '../../assets/styles/themes' as themes;
+
+// Root application container
+.app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-background);
+  @include mix.font-smoothing;
+  @include themes.theme-transition;
+
+  // Apply responsive container
+  @include mix.container;
+}
+
+// Header component
+.app-header {
+  @include themes.theme-background;
+  @include themes.theme-elevation(2);
+  position: sticky;
+  top: 0;
+  z-index: vars.$z-index-sticky;
+  padding: vars.$spacing-md vars.$spacing-lg;
+
+  &__container {
+    @include mix.flex-center;
+    justify-content: space-between;
+    height: 64px;
+
+    @include mix.mobile-only {
+      height: 56px;
+    }
+  }
+
+  &__logo {
+    @include mix.flex-center;
+    gap: vars.$spacing-sm;
+  }
+
+  &__actions {
+    @include mix.flex-center;
+    gap: vars.$spacing-md;
+  }
+}
+
+// Navigation sidebar
+.app-nav {
+  @include themes.theme-background;
+  width: 256px;
+  border-right: vars.$border-width-thin solid var(--color-border);
+  
+  @include mix.mobile-only {
+    position: fixed;
+    left: 0;
+    top: 56px;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform vars.$animation-duration-base vars.$animation-timing-function;
+    z-index: vars.$z-index-fixed;
+
+    &--open {
+      transform: translateX(0);
+    }
+  }
+
+  &__list {
+    padding: vars.$spacing-md 0;
+  }
+
+  &__item {
+    @include mix.spacing('md', padding);
+    @include themes.theme-transition;
+    display: flex;
+    align-items: center;
+    gap: vars.$spacing-md;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--color-surface);
+    }
+
+    &--active {
+      color: var(--color-primary);
+      background-color: var(--color-surface);
+    }
+  }
+}
+
+// Main content area
+.app-content {
+  flex: 1 1 auto;
+  padding: vars.$spacing-lg;
+  overflow-x: hidden;
+  
+  @include mix.mobile-only {
+    padding: vars.$spacing-md;
+  }
+
+  &__container {
+    @include mix.grid-container;
+  }
+}
+
+// Footer component
+.app-footer {
+  @include themes.theme-background;
+  @include themes.theme-elevation(1);
+  padding: vars.$spacing-lg;
+  margin-top: auto;
+
+  &__container {
+    @include mix.flex-center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: vars.$spacing-md;
+
+    @include mix.mobile-only {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+}
+
+// Responsive layout adjustments
+@include mix.tablet-up {
+  .app-root {
+    &--with-nav {
+      padding-left: 256px;
+    }
+  }
+
+  .app-content {
+    &__container {
+      gap: vars.$spacing-lg;
+    }
+  }
+}
+
+@include mix.desktop-up {
+  .app-content {
+    padding: vars.$spacing-xl;
+
+    &__container {
+      gap: vars.$spacing-xl;
+    }
+  }
+}
+
+// Accessibility enhancements
+@media (prefers-reduced-motion: reduce) {
+  .app-root * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+// Print styles
+@media print {
+  .app-header,
+  .app-nav,
+  .app-footer {
+    display: none;
+  }
+
+  .app-content {
+    padding: 0;
+  }
+}
+
+// RTL support
+[dir="rtl"] {
+  .app-nav {
+    border-right: none;
+    border-left: vars.$border-width-thin solid var(--color-border);
+
+    @include mix.mobile-only {
+      left: auto;
+      right: 0;
+      transform: translateX(100%);
+
+      &--open {
+        transform: translateX(0);
+      }
+    }
+  }
+
+  .app-root {
+    @include mix.tablet-up {
+      &--with-nav {
+        padding-left: 0;
+        padding-right: 256px;
+      }
+    }
+  }
+}
