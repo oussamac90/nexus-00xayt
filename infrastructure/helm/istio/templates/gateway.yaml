@@ -1,0 +1,108 @@
+# Istio Gateway Helm Template for Nexus B2B Platform
+# Version: 1.18.0
+# Provides secure ingress configuration with enhanced TLS and security features
+
+{{- if .Values.gateway.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Release.Name }}-gateway
+  namespace: {{ .Values.global.istioNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-gateway
+    app.kubernetes.io/part-of: nexus-platform
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/version: {{ .Chart.Version }}
+    app.kubernetes.io/component: gateway
+  annotations:
+    kubernetes.io/ingress.class: istio
+    cert-manager.io/cluster-issuer: {{ .Values.tls.clusterIssuer | default "letsencrypt-prod" }}
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "15020"
+spec:
+  selector:
+    istio: ingressgateway
+    app: istio-ingressgateway
+    topology.istio.io/network: {{ .Values.global.network | default "network1" }}
+  servers:
+    # HTTP Server Configuration - Redirects to HTTPS
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        {{- range .Values.gateway.hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      tls:
+        httpsRedirect: true
+
+    # HTTPS Server Configuration with Enhanced Security
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        {{- range .Values.gateway.hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      tls:
+        mode: SIMPLE
+        credentialName: {{ .Values.tls.certificateName }}
+        minProtocolVersion: TLSV1_2
+        maxProtocolVersion: TLSV1_3
+        cipherSuites:
+          - ECDHE-ECDSA-AES256-GCM-SHA384
+          - ECDHE-RSA-AES256-GCM-SHA384
+          - ECDHE-ECDSA-CHACHA20-POLY1305
+          - ECDHE-RSA-CHACHA20-POLY1305
+          - ECDHE-ECDSA-AES128-GCM-SHA256
+          - ECDHE-RSA-AES128-GCM-SHA256
+
+  # Pod Anti-Affinity Configuration for High Availability
+  {{- with .Values.gateway.podAntiAffinity }}
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: istio-ingressgateway
+            topologyKey: kubernetes.io/hostname
+  {{- end }}
+
+  # Resource Configuration for Gateway Pods
+  resources:
+    requests:
+      cpu: {{ .Values.gateway.resources.requests.cpu | default "500m" }}
+      memory: {{ .Values.gateway.resources.requests.memory | default "512Mi" }}
+    limits:
+      cpu: {{ .Values.gateway.resources.limits.cpu | default "2000m" }}
+      memory: {{ .Values.gateway.resources.limits.memory | default "1Gi" }}
+
+  # High Availability Configuration
+  replicas: {{ .Values.gateway.replicaCount | default 2 }}
+  minReplicas: {{ .Values.gateway.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.gateway.maxReplicas | default 5 }}
+
+  # Health Check Configuration
+  readinessProbe:
+    httpGet:
+      path: /healthz/ready
+      port: 15021
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  livenessProbe:
+    httpGet:
+      path: /healthz/alive
+      port: 15021
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+{{- end }}
