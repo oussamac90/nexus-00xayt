@@ -1,0 +1,36 @@
+apiVersion: v2
+name: product-service
+version: 1.0.0
+description: Product Service for Nexus B2B Platform - Handles product catalog management, eCl@ss classification, and GS1 integration with support for advanced search and categorization
+type: application
+appVersion: 1.0.0
+
+keywords:
+  - product
+  - catalog
+  - eclass
+  - gs1
+  - classification
+  - search
+  - b2b
+  - nexus
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+# Dependencies required by the product service
+dependencies:
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+
+  - name: mongodb
+    version: 13.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
+    tags:
+      - database
