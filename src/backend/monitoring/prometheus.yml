@@ -1,0 +1,140 @@
+# Prometheus Configuration v2.45.0
+# Global settings for Prometheus server
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: production
+    cluster: nexus-platform
+    region: ${AWS_REGION}
+
+# Alert rules configuration
+alerts:
+  groups:
+    - name: platform_alerts
+      rules:
+        # Performance Monitoring - API Latency
+        - alert: HighLatency
+          expr: http_request_duration_seconds{quantile="0.95"} > 0.5
+          for: 5m
+          labels:
+            severity: critical
+            category: performance
+          annotations:
+            summary: High API latency detected
+            description: 95th percentile latency is above 500ms
+            runbook_url: https://wiki.nexus-platform.com/alerts/high-latency
+
+        # Service Availability Monitoring
+        - alert: ServiceDown
+          expr: up == 0
+          for: 1m
+          labels:
+            severity: critical
+            category: availability
+          annotations:
+            summary: Service is down
+            description: '{{ $labels.job }} service is down'
+            runbook_url: https://wiki.nexus-platform.com/alerts/service-down
+
+        # Error Rate Monitoring
+        - alert: HighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+            category: reliability
+          annotations:
+            summary: High error rate detected
+            description: Error rate is above 5%
+            runbook_url: https://wiki.nexus-platform.com/alerts/high-error-rate
+
+        # Security Monitoring - Authentication
+        - alert: AuthenticationFailures
+          expr: sum(rate(authentication_failures_total[5m])) > 10
+          for: 5m
+          labels:
+            severity: critical
+            category: security
+          annotations:
+            summary: High authentication failure rate
+            description: Authentication failures exceed threshold
+            runbook_url: https://wiki.nexus-platform.com/alerts/auth-failures
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+      timeout: 10s
+      api_version: v2
+
+# Scrape configurations
+scrape_configs:
+  # API Gateway metrics
+  - job_name: api-gateway
+    metrics_path: /actuator/prometheus
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['api-gateway:8080']
+    metric_relabel_configs:
+      - source_labels: ['__name__']
+        regex: http_server_requests_seconds.*
+        action: keep
+
+  # Core Services monitoring
+  - job_name: core-services
+    metrics_path: /metrics
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+        - 'user-service:8080'
+        - 'product-service:8080'
+        - 'order-service:8080'
+        - 'payment-service:8080'
+        - 'shipping-service:8080'
+
+  # Infrastructure monitoring
+  - job_name: infrastructure
+    metrics_path: /metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+        - 'cadvisor:8080'
+
+  # Database monitoring
+  - job_name: databases
+    metrics_path: /metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+        - 'postgres-exporter:9187'
+        - 'mongodb-exporter:9216'
+        - 'redis-exporter:9121'
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention_time: 15d
+    retention_size: 50GB
+    wal_compression: true
+    min_block_duration: 2h
+    max_block_duration: 24h
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "http://thanos-receive:19291/api/v1/receive"
+    queue_config:
+      capacity: 500
+      max_shards: 1000
+      max_samples_per_send: 100
+      batch_send_deadline: 5s
+    retry_on_http_429: true
+
+# Remote read configuration for historical data
+remote_read:
+  - url: "http://thanos-query:19192/api/v1/read"
+    read_recent: true
