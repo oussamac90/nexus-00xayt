@@ -1,0 +1,57 @@
+# Build and Dependency Directories
+target/
+node_modules/
+dist/
+.gradle/
+build/
+
+# IDE and Editor Files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Compiled Files
+*.class
+*.jar
+*.war
+*.pyc
+__pycache__/
+
+# Logs and Temporary Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+tmp/
+
+# Environment and Secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+secrets/
+**/aws/credentials
+kubeconfig
+
+# Test Coverage and Reports
+coverage/
+reports/
+.nyc_output/
+junit-reports/
+htmlcov/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Infrastructure and Deployment
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+*.tfvars
+*.tfplan
+.docker/
+docker-compose.override.yml
