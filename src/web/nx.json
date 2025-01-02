@@ -1,0 +1,80 @@
+{
+  "npmScope": "nexus",
+  "affected": {
+    "defaultBase": "main"
+  },
+  "implicitDependencies": {
+    "package.json": {
+      "dependencies": "*",
+      "devDependencies": "*"
+    },
+    "tsconfig.json": "*",
+    "nx.json": "*",
+    ".eslintrc.json": "*"
+  },
+  "tasksRunnerOptions": {
+    "default": {
+      "runner": "@nrwl/workspace/tasks-runners/default",
+      "options": {
+        "cacheableOperations": [
+          "build",
+          "lint", 
+          "test",
+          "e2e"
+        ],
+        "parallel": 1
+      }
+    }
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "test": {
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/jest.config.ts"
+      ]
+    },
+    "lint": {
+      "inputs": [
+        "default",
+        "{workspaceRoot}/.eslintrc.json"
+      ]
+    }
+  },
+  "workspaceLayout": {
+    "appsDir": "apps",
+    "libsDir": "libs"
+  },
+  "projects": {
+    "nexus-web": {
+      "tags": [
+        "type:app",
+        "scope:nexus"
+      ],
+      "implicitDependencies": []
+    },
+    "shared-ui": {
+      "tags": [
+        "type:lib",
+        "scope:shared"
+      ]
+    },
+    "core": {
+      "tags": [
+        "type:lib",
+        "scope:core"
+      ]
+    },
+    "features": {
+      "tags": [
+        "type:lib",
+        "scope:features"
+      ]
+    }
+  }
+}
