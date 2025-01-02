@@ -1,0 +1,145 @@
+# Kubernetes version: 1.27+
+# Istio version: 1.18+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-service
+  namespace: nexus
+  labels:
+    app: shipping-service
+    version: 1.0.0
+    part-of: nexus
+    managed-by: kubectl
+    tier: backend
+    criticality: high
+  annotations:
+    # Service Mesh Integration
+    sidecar.istio.io/inject: "true"
+    # Monitoring Integration
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/actuator/prometheus"
+    # Secrets Management
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/role: "shipping-service"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: shipping-service
+  template:
+    metadata:
+      labels:
+        app: shipping-service
+    spec:
+      # Security Context Configuration
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      
+      # Container Configuration
+      containers:
+      - name: shipping-service
+        image: nexus/shipping-service:1.0.0
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        - containerPort: 9090
+          protocol: TCP
+          name: metrics
+        
+        # Environment Configuration
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: JAVA_OPTS
+          value: "-XX:+UseG1GC -Xms512m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/dumps"
+        - name: OTEL_SERVICE_NAME
+          value: "shipping-service"
+        
+        # Resource Management
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+        
+        # Health Checks
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 30
+        
+        # Volume Mounts
+        volumeMounts:
+        - name: heap-dumps
+          mountPath: /dumps
+        - name: tmp-volume
+          mountPath: /tmp
+      
+      # Volumes Configuration
+      volumes:
+      - name: heap-dumps
+        emptyDir: {}
+      - name: tmp-volume
+        emptyDir: {}
+      
+      # Service Account
+      serviceAccountName: shipping-service
+      
+      # Pod Scheduling
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - shipping-service
+              topologyKey: kubernetes.io/hostname
+      
+      # Node Tolerations
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      
+      # Graceful Termination
+      terminationGracePeriodSeconds: 60
