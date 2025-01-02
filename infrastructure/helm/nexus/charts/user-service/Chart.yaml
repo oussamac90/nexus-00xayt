@@ -1,0 +1,32 @@
+apiVersion: v2
+name: user-service
+version: 1.0.0
+appVersion: 1.0.0
+description: User Service for the Nexus B2B Platform - Handles user management, authentication, and organization operations with high availability and security features
+type: application
+
+keywords:
+  - user-management
+  - authentication
+  - organization
+  - microservice
+  - nexus-platform
+  - b2b-service
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+# Dependencies section defines required services
+dependencies:
+  # PostgreSQL database for user data persistence
+  - name: postgresql
+    version: 12.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+
+  # Redis for session management and caching
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
