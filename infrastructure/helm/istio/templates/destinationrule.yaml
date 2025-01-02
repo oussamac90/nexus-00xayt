@@ -1,0 +1,68 @@
+{{- if .Values.destinationRule.enabled }}
+{{- range $service, $config := .Values.destinationRule.services }}
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: {{ $service }}-destination-rule
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $service }}
+    app.kubernetes.io/part-of: nexus-platform
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    helm.sh/chart: {{ $.Chart.Name }}-{{ $.Chart.Version }}
+  annotations:
+    "helm.sh/hook": "post-install,post-upgrade"
+    "helm.sh/hook-weight": "0"
+    "meta.helm.sh/release-name": {{ $.Release.Name }}
+    "meta.helm.sh/release-namespace": {{ $.Release.Namespace }}
+spec:
+  host: {{ $service }}.{{ $.Release.Namespace }}.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: {{ $.Values.destinationRule.trafficPolicy.loadBalancer.simple | default "ROUND_ROBIN" }}
+      consistentHash:
+        httpHeaderName: x-user-id
+    connectionPool:
+      tcp:
+        maxConnections: {{ $.Values.destinationRule.trafficPolicy.connectionPool.tcp.maxConnections | default 100 }}
+        connectTimeout: {{ $.Values.destinationRule.trafficPolicy.connectionPool.tcp.connectTimeout | default "30ms" }}
+        tcpKeepalive:
+          time: {{ $.Values.destinationRule.trafficPolicy.connectionPool.tcp.tcpKeepalive.time | default "7200s" }}
+          interval: {{ $.Values.destinationRule.trafficPolicy.connectionPool.tcp.tcpKeepalive.interval | default "75s" }}
+          probes: {{ $.Values.destinationRule.trafficPolicy.connectionPool.tcp.tcpKeepalive.probes | default 9 }}
+      http:
+        http1MaxPendingRequests: {{ $.Values.destinationRule.trafficPolicy.connectionPool.http.http1MaxPendingRequests | default 1024 }}
+        maxRequestsPerConnection: {{ $.Values.destinationRule.trafficPolicy.connectionPool.http.maxRequestsPerConnection | default 10 }}
+        maxRetries: {{ $.Values.destinationRule.trafficPolicy.connectionPool.http.maxRetries | default 3 }}
+        idleTimeout: {{ $.Values.destinationRule.trafficPolicy.connectionPool.http.idleTimeout | default "30s" }}
+        h2MaxRequests: {{ $.Values.destinationRule.trafficPolicy.connectionPool.http.h2MaxRequests | default 1000 }}
+    outlierDetection:
+      consecutive5xxErrors: {{ $.Values.destinationRule.trafficPolicy.outlierDetection.consecutive5xxErrors | default 5 }}
+      interval: {{ $.Values.destinationRule.trafficPolicy.outlierDetection.interval | default "30s" }}
+      baseEjectionTime: {{ $.Values.destinationRule.trafficPolicy.outlierDetection.baseEjectionTime | default "30s" }}
+      maxEjectionPercent: {{ $.Values.destinationRule.trafficPolicy.outlierDetection.maxEjectionPercent | default 10 }}
+      minHealthPercent: {{ $.Values.destinationRule.trafficPolicy.outlierDetection.minHealthPercent | default 50 }}
+    tls:
+      mode: ISTIO_MUTUAL
+      minProtocolVersion: TLSV1_2
+      cipherSuites:
+        - ECDHE-ECDSA-AES256-GCM-SHA384
+        - ECDHE-RSA-AES256-GCM-SHA384
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+      trafficPolicy:
+        loadBalancer:
+          simple: LEAST_CONN
+    - name: v2
+      labels:
+        version: v2
+      trafficPolicy:
+        loadBalancer:
+          simple: LEAST_CONN
+  exportTo:
+    - "."
+---
+{{- end }}
+{{- end }}
