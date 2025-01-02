@@ -1,0 +1,45 @@
+# Kubernetes Service Configuration v1.27+
+# Purpose: Internal load balancing and service discovery for Nexus Platform web UI pods
+# Provides high availability and secure networking for production frontend tier
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: nexus-web
+  namespace: nexus
+  labels:
+    app: nexus
+    component: web
+    environment: production
+    tier: frontend
+    managed-by: kubernetes
+  annotations:
+    # Enable Prometheus metrics scraping
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "80"
+    # AWS NLB configuration for enhanced performance
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+spec:
+  # Use ClusterIP for internal pod access
+  type: ClusterIP
+  
+  # Port configuration for HTTP traffic
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  
+  # Pod selector for service discovery
+  selector:
+    app: nexus
+    component: web
+  
+  # Load balancing configuration
+  sessionAffinity: None
+  
+  # High availability settings
+  publishNotReadyAddresses: false
+  internalTrafficPolicy: Cluster
