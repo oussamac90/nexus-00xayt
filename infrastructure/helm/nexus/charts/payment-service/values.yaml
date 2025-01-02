@@ -1,0 +1,212 @@
+# Payment Service Helm Chart Values
+# Version: 1.0.0
+# Helm v3
+
+# Number of replicas for high availability
+replicaCount: 3
+
+# Container image configuration
+image:
+  repository: ${imageRegistry}/payment-service
+  tag: 1.0.0
+  pullPolicy: Always
+
+# Image pull secrets for private registry access
+imagePullSecrets:
+  - nexus-registry
+
+# Optional name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration for cloud IAM integration
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: ${PAYMENT_SERVICE_ROLE_ARN}
+    iam.gke.io/workload-identity: ${PAYMENT_SERVICE_GSA}
+  name: payment-service
+
+# Pod annotations for monitoring and security
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8085"
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/role: "payment-service"
+  vault.hashicorp.com/agent-pre-populate-only: "true"
+  security.cloud.google.com/pci-dss: "true"
+
+# Pod security context for PCI compliance
+podSecurityContext:
+  runAsUser: 1000
+  runAsNonRoot: true
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context for PCI compliance
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8085
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Horizontal pod autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 15
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+
+# Node selection for PCI compliance
+nodeSelector:
+  pci-compliant: "true"
+  payment-workload: "true"
+  compliance-level: "high"
+
+# PCI workload tolerations
+tolerations:
+  - key: "pci-workload"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Pod and node affinity rules
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - payment-service
+        topologyKey: topology.kubernetes.io/zone
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: pci-compliant
+              operator: In
+              values:
+                - "true"
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: production
+  KAFKA_SERVERS: kafka:9092
+  REDIS_HOST: redis-master
+  REDIS_PORT: "6379"
+  JVM_OPTS: "-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:InitiatingHeapOccupancyPercent=70"
+
+# Sensitive configuration stored in secrets
+secrets:
+  payment-secrets:
+    stripe-api-key: ${STRIPE_API_KEY}
+    stripe-webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+    encryption-key: ${ENCRYPTION_KEY}
+    hmac-secret: ${HMAC_SECRET}
+
+# Health check probes
+probes:
+  livenessProbe:
+    httpGet:
+      path: /actuator/health/liveness
+      port: 8085
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /actuator/health/readiness
+      port: 8085
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  startupProbe:
+    httpGet:
+      path: /actuator/health
+      port: 8085
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 30
+
+# Monitoring configuration
+monitoring:
+  serviceMonitor:
+    enabled: true
+    path: /actuator/prometheus
+    interval: "15s"
+    scrapeTimeout: "10s"
+    labels:
+      release: prometheus
+  alerts:
+    enabled: true
+    rules:
+      - alert: HighLatency
+        expr: http_server_requests_seconds_max > 0.5
+        for: 5m
+        labels:
+          severity: critical
+
+# Service mesh configuration
+istio:
+  enabled: true
+  mtls:
+    mode: STRICT
+  peerAuthentication:
+    enabled: true
+    mtls:
+      mode: STRICT
+
+# Disruption budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: "50%"
+
+# Network policies for PCI compliance
+networkPolicy:
+  enabled: true
+  spec:
+    podSelector:
+      matchLabels:
+        app: payment-service
+    ingress:
+      - from:
+          - podSelector:
+              matchLabels:
+                app: api-gateway
+        ports:
+          - port: 8085
+            protocol: TCP
