@@ -1,0 +1,199 @@
+spring:
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      # Enable service discovery
+      discovery:
+        locator:
+          enabled: true
+          lowerCaseServiceId: true
+      
+      # Route configurations
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - AuthenticationFilter
+            - RateLimitingFilter
+            - name: CircuitBreaker
+              args:
+                name: user-service
+                fallbackUri: forward:/fallback/users
+        
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - AuthenticationFilter
+            - RateLimitingFilter
+            - name: CircuitBreaker
+              args:
+                name: product-service
+                fallbackUri: forward:/fallback/products
+        
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - AuthenticationFilter
+            - RateLimitingFilter
+            - name: CircuitBreaker
+              args:
+                name: order-service
+                fallbackUri: forward:/fallback/orders
+        
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - AuthenticationFilter
+            - RateLimitingFilter
+            - SecureHeadersFilter
+            - name: CircuitBreaker
+              args:
+                name: payment-service
+                fallbackUri: forward:/fallback/payments
+        
+        - id: shipping-service
+          uri: lb://shipping-service
+          predicates:
+            - Path=/api/v1/shipping/**
+          filters:
+            - AuthenticationFilter
+            - RateLimitingFilter
+            - name: CircuitBreaker
+              args:
+                name: shipping-service
+                fallbackUri: forward:/fallback/shipping
+        
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/v1/analytics/**
+          filters:
+            - AuthenticationFilter
+            - RateLimitingFilter
+            - name: CircuitBreaker
+              args:
+                name: analytics-service
+                fallbackUri: forward:/fallback/analytics
+
+    # Service discovery configuration
+    eureka:
+      client:
+        serviceUrl:
+          defaultZone: http://eureka-server:8761/eureka/
+        registerWithEureka: true
+        fetchRegistry: true
+        healthcheck:
+          enabled: true
+
+  # Security configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://auth.nexus.com
+          jwk-set-uri: https://auth.nexus.com/.well-known/jwks.json
+    cors:
+      allowed-origins: 
+        - https://*.nexus.com
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      allowed-headers:
+        - '*'
+      max-age: 3600
+
+# Server configuration
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types:
+      - application/json
+      - application/xml
+      - text/plain
+    min-response-size: 1024
+  http2:
+    enabled: true
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+
+# Management endpoints configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - prometheus
+          - info
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: api-gateway
+    distribution:
+      percentiles-histogram: true
+      sla:
+        - 10ms
+        - 50ms
+        - 100ms
+        - 200ms
+        - 500ms
+  health:
+    show-details: always
+    probes:
+      enabled: true
+
+# Resilience4j configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        slidingWindowSize: 100
+        permittedNumberOfCallsInHalfOpenState: 10
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+  ratelimiter:
+    instances:
+      default:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 5s
+        registerHealthIndicator: true
+  bulkhead:
+    instances:
+      default:
+        maxConcurrentCalls: 25
+        maxWaitDuration: 1s
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.nexus.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/api-gateway.log
+    max-size: 10MB
+    max-history: 10
