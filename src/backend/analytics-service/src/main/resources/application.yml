@@ -1,0 +1,143 @@
+# Analytics Service Configuration
+# Version: 1.0
+# Enhanced configuration with ML support and optimized performance settings
+
+spring:
+  application:
+    name: analytics-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  main:
+    allow-bean-definition-overriding: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: UTC
+
+  # Enhanced Elasticsearch Configuration - v5.1.x
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USER:elastic}
+    password: ${ELASTICSEARCH_PASSWORD:elastic}
+    connection-timeout: 5s
+    socket-timeout: 10s
+    retry-on-conflict: 3
+    cluster:
+      name: ${ELASTICSEARCH_CLUSTER:nexus-analytics}
+    ssl:
+      enabled: true
+      verification-mode: full
+      certificate: ${ELASTICSEARCH_CERT_PATH:/path/to/cert}
+    indices:
+      query:
+        bool:
+          max_clause_count: 2048
+    bulk:
+      flush-interval: 5s
+      size: 1000
+      concurrent-requests: 4
+
+  # Redis Configuration - Using common RedisConfig
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000
+    cluster:
+      nodes: ${REDIS_CLUSTER_NODES:localhost:6379}
+    lettuce:
+      pool:
+        max-active: 50
+        min-idle: 10
+        max-wait: 2000ms
+
+  # Kafka Configuration - Using common KafkaConfig
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    security:
+      protocol: SASL_SSL
+    producer:
+      compression-type: snappy
+      batch-size: 16384
+      retries: 3
+    consumer:
+      group-id: analytics-service
+      auto-offset-reset: earliest
+      max-poll-records: 500
+
+# Server Configuration
+server:
+  port: 8085
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+    accept-count: 100
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/plain
+
+# Management & Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+  health:
+    elasticsearch:
+      enabled: true
+    redis:
+      enabled: true
+    kafka:
+      enabled: true
+
+# Nexus Analytics Service Specific Configuration
+nexus:
+  analytics:
+    processing:
+      batch-size: 1000
+      threads: 4
+    cache:
+      ttl: 30m
+    reporting:
+      enabled: true
+    ml:
+      model-path: /opt/nexus/models
+      model-update-interval: 24h
+      performance-threshold: 0.85
+      max-training-time: 4h
+    data-retention:
+      days: 365
+      backup-enabled: true
+      backup-schedule: "0 0 1 * * ?"
+    metrics:
+      business:
+        enabled: true
+      custom:
+        enabled: true
+    alerts:
+      enabled: true
+      threshold:
+        cpu: 80
+        memory: 85
+        disk: 90
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.nexus.analytics: DEBUG
+    org.springframework.data.elasticsearch: INFO
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /var/log/nexus/analytics-service.log
+    max-size: 100MB
+    max-history: 30
