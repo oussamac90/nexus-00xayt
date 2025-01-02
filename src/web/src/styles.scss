@@ -1,0 +1,148 @@
+// ==========================================================================
+// Global Stylesheet - Nexus Platform
+// Version: 1.0.0
+// ==========================================================================
+
+// External Dependencies
+@use '@angular/material/theming' as mat; // v16.x
+@import 'normalize.css'; // v8.0.1
+@import 'roboto-fontface/css/roboto/roboto-fontface.css'; // v0.10.0
+
+// Internal Dependencies
+@use 'assets/styles/main' as *;
+@use 'theme/material-theme' as theme;
+
+// Layer Management
+@layer reset, base, theme, components, utilities;
+
+// ==========================================================================
+// Reset Layer
+// ==========================================================================
+@layer reset {
+  html {
+    height: 100%;
+    margin: 0;
+    font-family: Roboto, system-ui, sans-serif;
+    box-sizing: border-box;
+    text-size-adjust: 100%;
+    color-scheme: light dark;
+  }
+
+  *, *:before, *:after {
+    box-sizing: inherit;
+    margin-block: 0;
+    margin-inline: 0;
+  }
+}
+
+// ==========================================================================
+// Base Layer
+// ==========================================================================
+@layer base {
+  body {
+    display: flex;
+    flex-direction: column;
+    min-block-size: 100vh;
+    background-color: var(--nexus-background);
+    color: var(--nexus-text);
+    line-height: var(--nexus-line-height);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    container-type: inline-size;
+  }
+
+  // Reduced Motion Support
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+// ==========================================================================
+// Theme Layer
+// ==========================================================================
+@layer theme {
+  .nexus-theme {
+    --nexus-background: oklch(100% 0 0);
+    --nexus-text: oklch(27% 0 0);
+    --nexus-primary: oklch(55% 0.2 250);
+    --nexus-focus-ring: 0 0 0 3px oklch(55% 0.2 250 / 0.5);
+  }
+
+  .nexus-dark-theme {
+    --nexus-background: oklch(27% 0 0);
+    --nexus-text: oklch(95% 0 0);
+    --nexus-primary: oklch(70% 0.2 250);
+    --nexus-focus-ring: 0 0 0 3px oklch(70% 0.2 250 / 0.5);
+  }
+
+  // Apply theme based on user preference
+  @mixin apply-theme($theme-mode: 'light', $high-contrast: false) {
+    @if $theme-mode == 'light' {
+      @include theme.nexus-light-theme;
+      @include theme.nexus-typography;
+    } @else {
+      @include theme.nexus-dark-theme;
+      @include theme.nexus-typography;
+    }
+
+    @if $high-contrast {
+      @include theme.high-contrast;
+    }
+  }
+}
+
+// ==========================================================================
+// Components Layer
+// ==========================================================================
+@layer components {
+  // Container Queries for Responsive Components
+  @container (min-width: 320px) {
+    .nexus-card {
+      grid-template-columns: 1fr;
+      padding: var(--spacing-md);
+    }
+  }
+
+  @container (min-width: 768px) {
+    .nexus-card {
+      grid-template-columns: repeat(2, 1fr);
+      padding: var(--spacing-lg);
+    }
+  }
+
+  @container (min-width: 1024px) {
+    .nexus-card {
+      grid-template-columns: repeat(3, 1fr);
+      padding: var(--spacing-xl);
+    }
+  }
+}
+
+// ==========================================================================
+// Utilities Layer
+// ==========================================================================
+@layer utilities {
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .focus-ring {
+    &:focus-visible {
+      outline: var(--nexus-focus-ring);
+      outline-offset: 2px;
+    }
+  }
+}
