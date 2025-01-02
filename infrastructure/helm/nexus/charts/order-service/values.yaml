@@ -1,0 +1,193 @@
+# Default values for order-service Helm chart
+# This is a YAML-formatted file.
+
+# Specify a name override for the chart
+nameOverride: ""
+# Specify a full name override for the chart
+fullnameOverride: ""
+
+# Number of replicas for high availability
+replicaCount: 3
+
+# Container image configuration
+image:
+  repository: nexus/order-service
+  tag: 1.0.0
+  pullPolicy: IfNotPresent
+
+# Image pull secrets configuration
+imagePullSecrets:
+  - name: nexus-registry
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::${AWS_ACCOUNT}:role/order-service-role
+  name: order-service
+
+# Pod annotations for monitoring and vault integration
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/actuator/prometheus"
+  prometheus.io/port: "8083"
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/role: "order-service"
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8083
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 3Gi
+
+# Horizontal pod autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 15
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+
+# Node selector configuration
+nodeSelector:
+  kubernetes.io/os: linux
+  node-type: application
+
+# Pod tolerations
+tolerations:
+  - key: node-type
+    operator: Equal
+    value: application
+    effect: NoSchedule
+
+# Pod affinity rules
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - order-service
+        topologyKey: kubernetes.io/hostname
+
+# Environment variables
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: SERVER_PORT
+    value: "8083"
+  - name: JAVA_OPTS
+    value: "-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication -Xms1g -Xmx2g"
+
+# ConfigMap configuration
+configmap:
+  enabled: true
+  data:
+    application.yml:
+      spring:
+        application:
+          name: order-service
+        kafka:
+          bootstrap-servers: ${KAFKA_BROKERS}
+          producer:
+            key-serializer: org.apache.kafka.common.serialization.StringSerializer
+            value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+            acks: all
+            retries: 3
+            batch-size: 16384
+            properties:
+              enable.idempotence: true
+              max.in.flight.requests.per.connection: 5
+        redis:
+          host: ${REDIS_HOST}
+          port: ${REDIS_PORT}
+          timeout: 2000
+          lettuce:
+            pool:
+              max-active: 8
+              max-idle: 8
+              min-idle: 2
+        management:
+          endpoints:
+            web:
+              exposure:
+                include: health,info,metrics,prometheus,loggers
+          metrics:
+            tags:
+              application: order-service
+            distribution:
+              percentiles-histogram: true
+              sla:
+                http:
+                  - 0.1
+                  - 0.3
+                  - 0.5
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8083
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8083
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Service monitor configuration for Prometheus
+serviceMonitor:
+  enabled: true
+  path: /actuator/prometheus
+  interval: "15s"
+  scrapeTimeout: "10s"
+
+# Pod disruption budget configuration
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
