@@ -1,0 +1,196 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+  actions: read
+  packages: read
+
+env:
+  JAVA_VERSION: '17'  # From pom.xml java.version
+  NODE_VERSION: '18'  # From package.json engines.node
+  SPRING_BOOT_VERSION: '3.1.0'  # From pom.xml spring-boot.version
+
+jobs:
+  code_quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Run Super-Linter
+        uses: github/super-linter@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_JAVA: true
+          VALIDATE_YAML: true
+
+      - name: SonarCloud Analysis
+        uses: SonarSource/sonarcloud-github-action@v1.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=nexus-platform
+            -Dsonar.organization=nexus
+            -Dsonar.java.source=17
+            -Dsonar.coverage.exclusions=**/test/**,**/generated/**
+            -Dsonar.qualitygate.wait=true
+
+      - name: Check Code Formatting
+        run: |
+          npm install -g prettier@2.8.8
+          prettier --check "src/**/*.{ts,js,json,css,scss}"
+
+      - name: Validate Commit Messages
+        uses: wagoid/commitlint-github-action@v5
+
+      - name: License Compliance Check
+        run: |
+          npm install -g license-checker
+          license-checker --production --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC"
+
+  backend_checks:
+    name: Backend Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Backend Tests
+        run: |
+          mvn clean verify \
+            -B \
+            -Dspring.profiles.active=test \
+            -Djacoco.destFile=target/jacoco.exec \
+            -Dtest.coverage.minimum=0.80
+
+      - name: Validate OpenAPI Contracts
+        run: |
+          mvn springdoc:generate \
+            -Dspringdoc.api-docs.enabled=true \
+            -Dspringdoc.swagger-ui.enabled=true
+
+      - name: Check Spring Actuator Endpoints
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=test & 
+          sleep 30 && 
+          curl http://localhost:8080/actuator/health
+
+      - name: Verify Database Migrations
+        run: mvn flyway:validate -Dflyway.configFiles=src/main/resources/flyway.conf
+
+  frontend_checks:
+    name: Frontend Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          cd src/web
+          npm ci
+
+      - name: Lint TypeScript
+        run: |
+          cd src/web
+          npm run lint -- --max-warnings=0
+
+      - name: Run Unit Tests
+        run: |
+          cd src/web
+          npm run test:ci -- --coverage --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
+
+      - name: Run E2E Tests
+        run: |
+          cd src/web
+          npm run cypress:run
+
+      - name: Check Bundle Size
+        run: |
+          cd src/web
+          npm run build:prod
+          npx bundlesize
+
+      - name: Validate Accessibility
+        run: |
+          cd src/web
+          npm run cypress:run -- --config-file cypress/accessibility.config.js
+
+  security_checks:
+    name: Security Scans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'nexus-platform'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --suppression suppression.xml
+            --failOnCVSS 7
+            --enableRetired
+
+      - name: Snyk Security Scan
+        uses: snyk/actions@v1.1.0
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Container Vulnerability Scan
+        uses: aquasecurity/trivy-action@v0.10.0
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Secret Scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Security Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Archive Security Reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            **/dependency-check-report.html
+            trivy-results.sarif
+          retention-days: 30
