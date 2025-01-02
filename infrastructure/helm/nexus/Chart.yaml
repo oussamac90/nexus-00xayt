@@ -1,0 +1,84 @@
+apiVersion: v2
+name: nexus
+version: 1.0.0
+appVersion: 1.0.0
+description: Nexus B2B Trade Platform - A comprehensive enterprise-grade solution for digital trade operations with microservices architecture, high availability, and cloud-native infrastructure
+type: application
+
+keywords:
+  - b2b
+  - trade
+  - marketplace
+  - microservices
+  - enterprise
+  - cloud-native
+  - kubernetes
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+    url: https://nexus.com/platform-team
+
+dependencies:
+  # Core Services
+  - name: api-gateway
+    version: 1.0.0
+    repository: file://charts/api-gateway
+    condition: api-gateway.enabled
+
+  - name: auth-service
+    version: 1.0.0
+    repository: file://charts/auth-service
+    condition: auth-service.enabled
+
+  - name: user-service
+    version: 1.0.0
+    repository: file://charts/user-service
+    condition: user-service.enabled
+
+  - name: product-service
+    version: 1.0.0
+    repository: file://charts/product-service
+    condition: product-service.enabled
+
+  - name: order-service
+    version: 1.0.0
+    repository: file://charts/order-service
+    condition: order-service.enabled
+
+  - name: payment-service
+    version: 1.0.0
+    repository: file://charts/payment-service
+    condition: payment-service.enabled
+
+  - name: shipping-service
+    version: 1.0.0
+    repository: file://charts/shipping-service
+    condition: shipping-service.enabled
+
+  - name: analytics-service
+    version: 1.0.0
+    repository: file://charts/analytics-service
+    condition: analytics-service.enabled
+
+  - name: notification-service
+    version: 1.0.0
+    repository: file://charts/notification-service
+    condition: notification-service.enabled
+
+  # Infrastructure Components
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - infrastructure
+      - cache
+
+  - name: kafka
+    version: 23.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+    tags:
+      - infrastructure
+      - messaging
