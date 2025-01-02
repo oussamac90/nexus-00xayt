@@ -1,0 +1,52 @@
+* @nexus/platform-leads
+
+# Backend common utilities and shared components
+src/backend/common/** @nexus/backend-core
+
+# API Gateway with security oversight
+src/backend/api-gateway/** @nexus/gateway-team @nexus/security-team
+
+# Authentication and authorization service
+src/backend/auth-service/** @nexus/security-team @nexus/backend-core
+
+# User management service with security oversight
+src/backend/user-service/** @nexus/user-management @nexus/security-team
+
+# Product catalog and management service
+src/backend/product-service/** @nexus/product-team
+
+# Order processing service
+src/backend/order-service/** @nexus/order-team
+
+# Payment processing service with mandatory security review
+src/backend/payment-service/** @nexus/payment-team @nexus/security-team
+
+# Shipping and logistics service
+src/backend/shipping-service/** @nexus/logistics-team
+
+# Analytics and reporting service
+src/backend/analytics-service/** @nexus/analytics-team
+
+# Notification service
+src/backend/notification-service/** @nexus/notification-team
+
+# Frontend web application
+src/web/** @nexus/frontend-team
+
+# Infrastructure and deployment configurations
+infrastructure/** @nexus/devops-team @nexus/security-team
+
+# CI/CD workflow configurations
+.github/workflows/** @nexus/devops-team @nexus/security-team
+
+# Security-related configurations across all services
+src/backend/**/security/** @nexus/security-team
+
+# Container configurations
+**/Dockerfile @nexus/devops-team
+
+# Maven build configurations
+**/pom.xml @nexus/backend-core
+
+# Frontend dependency management
+src/web/package.json @nexus/frontend-team
