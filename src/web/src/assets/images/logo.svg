@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="240" height="60" viewBox="0 0 240 60" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-label="Nexus Platform Logo">
+    <title>Nexus Platform - B2B Trade Facilitation Solution</title>
+    <defs>
+        <linearGradient id="primary-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#1976D2;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1565C0;stop-opacity:1" />
+        </linearGradient>
+        <style>
+            @media (prefers-color-scheme: dark) {
+                .logo-text { fill: #64B5F6; }
+                .logo-symbol { fill: url(#primary-gradient); }
+            }
+        </style>
+    </defs>
+    
+    <!-- Logo Symbol - Interconnected hexagons representing B2B trade network -->
+    <g class="logo-symbol" transform="translate(10,10)">
+        <path d="M20 20 L30 15 L40 20 L40 30 L30 35 L20 30 Z" 
+              fill="url(#primary-gradient)" 
+              stroke="#1976D2" 
+              stroke-width="2"/>
+        <path d="M30 15 L40 10 L50 15 L50 25 L40 30 L30 25 Z" 
+              fill="url(#primary-gradient)" 
+              stroke="#1976D2" 
+              stroke-width="2"/>
+        <path d="M40 20 L50 15 L60 20 L60 30 L50 35 L40 30 Z" 
+              fill="url(#primary-gradient)" 
+              stroke="#1976D2" 
+              stroke-width="2"/>
+    </g>
+    
+    <!-- Wordmark "NEXUS" -->
+    <g class="logo-text" transform="translate(80,38)">
+        <text font-family="Roboto, sans-serif" 
+              font-size="32" 
+              font-weight="700" 
+              fill="#424242">
+            NEXUS
+        </text>
+    </g>
+    
+    <!-- Platform Tagline -->
+    <g class="logo-tagline" transform="translate(82,52)">
+        <text font-family="Open Sans, sans-serif" 
+              font-size="12" 
+              font-weight="400" 
+              fill="#424242">
+            B2B Trade Facilitation
+        </text>
+    </g>
+    
+    <!-- Ensure SVG is accessible -->
+    <metadata>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                 xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <rdf:Description>
+                <dc:title>Nexus Platform Logo</dc:title>
+                <dc:description>Vector logo for Nexus Platform B2B Trade Facilitation Solution</dc:description>
+                <dc:creator>Nexus Platform</dc:creator>
+                <dc:format>image/svg+xml</dc:format>
+                <dc:type>Logo</dc:type>
+            </rdf:Description>
+        </rdf:RDF>
+    </metadata>
+</svg>
