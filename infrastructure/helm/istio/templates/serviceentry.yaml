@@ -1,0 +1,84 @@
+{{/* ServiceEntry template for secure external service access */}}
+{{- define "serviceentry.tpl" -}}
+{{- range $name, $config := .Values.serviceEntry }}
+{{- if $config.enabled }}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $.Release.Name }}
+    app.kubernetes.io/component: serviceentry
+    app.kubernetes.io/instance: {{ $name }}
+    security.istio.io/tlsMode: strict
+    monitoring.istio.io/enabled: "true"
+  annotations:
+    security.istio.io/compliance: {{ $config.compliance | default "standard" }}
+    monitoring.istio.io/scrape: "true"
+    monitoring.istio.io/port: {{ index $config.ports 0 "number" | quote }}
+spec:
+  hosts:
+  {{- range $config.hosts }}
+    - {{ . | quote }}
+  {{- end }}
+  ports:
+  {{- range $config.ports }}
+    - number: {{ .number }}
+      name: {{ .name }}
+      protocol: {{ .protocol }}
+  {{- end }}
+  location: MESH_EXTERNAL
+  resolution: {{ $config.resolution | default "DNS" }}
+  exportTo:
+  {{- if $config.exportTo }}
+    {{- range $config.exportTo }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- else }}
+    - "."
+  {{- end }}
+  {{- if $config.endpoints }}
+  endpoints:
+  {{- range $config.endpoints }}
+    - address: {{ .address }}
+      {{- if .ports }}
+      ports:
+        {{- toYaml .ports | nindent 8 }}
+      {{- end }}
+  {{- end }}
+  {{- end }}
+  trafficPolicy:
+    tls:
+      mode: {{ $config.security.mtls | default "MUTUAL" }}
+      minProtocolVersion: {{ $config.security.minTlsVersion | default "TLSV1_2" }}
+      {{- if $config.security.cipherSuites }}
+      cipherSuites:
+      {{- range $config.security.cipherSuites }}
+        - {{ . }}
+      {{- end }}
+      {{- end }}
+    connectionPool:
+      tcp:
+        maxConnections: {{ $config.connectionPool.tcp.maxConnections | default 100 }}
+        connectTimeout: {{ $config.connectionPool.tcp.connectTimeout | default "5s" }}
+        tcpKeepalive:
+          time: {{ $config.connectionPool.tcp.keepaliveTime | default "7200s" }}
+          interval: {{ $config.connectionPool.tcp.keepaliveInterval | default "75s" }}
+      http:
+        maxRetries: {{ $config.connectionPool.http.maxRetries | default 3 }}
+        http2MaxRequests: {{ $config.connectionPool.http.http2MaxRequests | default 1000 }}
+        maxRequestsPerConnection: {{ $config.connectionPool.http.maxRequestsPerConnection | default 10 }}
+        idleTimeout: {{ $config.connectionPool.http.idleTimeout | default "30s" }}
+    outlierDetection:
+      consecutive5xxErrors: {{ $config.outlierDetection.consecutive5xxErrors | default 5 }}
+      interval: {{ $config.outlierDetection.interval | default "30s" }}
+      baseEjectionTime: {{ $config.outlierDetection.baseEjectionTime | default "30s" }}
+      maxEjectionPercent: {{ $config.outlierDetection.maxEjectionPercent | default 10 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/* Generate ServiceEntries for all configured external services */}}
+{{- include "serviceentry.tpl" . }}
