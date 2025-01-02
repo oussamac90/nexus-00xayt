@@ -1,0 +1,255 @@
+{{/* Jaeger Helm template for Nexus Platform monitoring */}}
+{{- if .Values.jaeger.enabled -}}
+---
+# ConfigMap for Jaeger configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-config
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: jaeger
+data:
+  sampling.json: |
+    {
+      "default_strategy": {
+        "type": "probabilistic",
+        "param": {{ .Values.jaeger.collector.sampling.param | default 1.0 }}
+      }
+    }
+---
+# Service for Jaeger Collector
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-collector
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: jaeger
+    component: collector
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "14269"
+spec:
+  ports:
+    - port: {{ .Values.global.JAEGER_COLLECTOR_PORT | default 14250 }}
+      protocol: TCP
+      name: grpc
+    - port: 14269
+      protocol: TCP
+      name: admin-http
+  selector:
+    app: jaeger
+    component: collector
+  type: ClusterIP
+---
+# Deployment for Jaeger Collector
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger-collector
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: jaeger
+    component: collector
+spec:
+  replicas: {{ .Values.jaeger.collector.replicaCount }}
+  selector:
+    matchLabels:
+      app: jaeger
+      component: collector
+  template:
+    metadata:
+      labels:
+        app: jaeger
+        component: collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "14269"
+    spec:
+      serviceAccountName: jaeger-collector
+      securityContext:
+        {{- toYaml .Values.global.podSecurityContext | nindent 8 }}
+      containers:
+        - name: jaeger-collector
+          image: "{{ .Values.global.imageRegistry }}/jaegertracing/jaeger-collector:{{ .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 14250
+              name: grpc
+            - containerPort: 14269
+              name: admin-http
+          env:
+            - name: SPAN_STORAGE_TYPE
+              value: "elasticsearch"
+            - name: ES_SERVER_URLS
+              value: {{ .Values.jaeger.storage.options.es.server-urls }}
+            - name: ES_TLS_ENABLED
+              value: "{{ .Values.jaeger.storage.options.es.tls.enabled }}"
+            - name: ES_TLS_CA
+              value: "/etc/jaeger/certificates/ca.crt"
+          resources:
+            {{- toYaml .Values.jaeger.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: jaeger-config
+              mountPath: /etc/jaeger/sampling
+            - name: es-certs
+              mountPath: /etc/jaeger/certificates
+              readOnly: true
+      volumes:
+        - name: jaeger-config
+          configMap:
+            name: jaeger-config
+        - name: es-certs
+          secret:
+            secretName: elasticsearch-certs
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - jaeger
+                  - key: component
+                    operator: In
+                    values:
+                      - collector
+              topologyKey: kubernetes.io/hostname
+---
+# Service for Jaeger Query UI
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-query
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: jaeger
+    component: query
+spec:
+  ports:
+    - port: {{ .Values.global.JAEGER_QUERY_PORT | default 16686 }}
+      protocol: TCP
+      name: http
+  selector:
+    app: jaeger
+    component: query
+  type: ClusterIP
+---
+# Deployment for Jaeger Query UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger-query
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: jaeger
+    component: query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+      component: query
+  template:
+    metadata:
+      labels:
+        app: jaeger
+        component: query
+    spec:
+      serviceAccountName: jaeger-query
+      securityContext:
+        {{- toYaml .Values.global.podSecurityContext | nindent 8 }}
+      containers:
+        - name: jaeger-query
+          image: "{{ .Values.global.imageRegistry }}/jaegertracing/jaeger-query:{{ .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 16686
+              name: http
+          env:
+            - name: SPAN_STORAGE_TYPE
+              value: "elasticsearch"
+            - name: ES_SERVER_URLS
+              value: {{ .Values.jaeger.storage.options.es.server-urls }}
+            - name: ES_TLS_ENABLED
+              value: "{{ .Values.jaeger.storage.options.es.tls.enabled }}"
+            - name: ES_TLS_CA
+              value: "/etc/jaeger/certificates/ca.crt"
+            {{- if .Values.jaeger.query.security.oauth.enabled }}
+            - name: OAUTH2_CLIENT_ID
+              value: {{ .Values.jaeger.query.security.oauth.clientId }}
+            - name: OAUTH2_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jaeger-oauth
+                  key: client-secret
+            {{- end }}
+          resources:
+            {{- toYaml .Values.jaeger.query.resources | nindent 12 }}
+          volumeMounts:
+            - name: es-certs
+              mountPath: /etc/jaeger/certificates
+              readOnly: true
+      volumes:
+        - name: es-certs
+          secret:
+            secretName: elasticsearch-certs
+---
+# ServiceMonitor for Prometheus integration
+{{- if .Values.jaeger.collector.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jaeger-collector
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+      component: collector
+  endpoints:
+    - port: admin-http
+      interval: {{ .Values.jaeger.collector.monitoring.serviceMonitor.interval }}
+{{- end }}
+---
+# Network Policy for Jaeger components
+{{- if .Values.global.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jaeger-network-policy
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: jaeger
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: jaeger
+        - podSelector:
+            matchLabels:
+              app: prometheus
+    ports:
+      - protocol: TCP
+        port: 14250
+      - protocol: TCP
+        port: 16686
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: elasticsearch
+    ports:
+      - protocol: TCP
+        port: 9200
+{{- end }}
+{{- end }}
