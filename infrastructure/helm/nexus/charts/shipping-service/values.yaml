@@ -1,0 +1,180 @@
+# Default values for shipping-service Helm chart
+# This is a YAML-formatted file.
+
+# Specify the number of replicas for high availability
+replicaCount: 2
+
+# Override the name and fullname if needed
+nameOverride: ""
+fullnameOverride: ""
+
+# Image configuration
+image:
+  repository: ${IMAGE_REGISTRY}/shipping-service
+  tag: 1.0.0
+  pullPolicy: IfNotPresent
+
+# Image pull secrets
+imagePullSecrets:
+  - name: nexus-registry
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: ${IAM_ROLE_ARN}
+  name: shipping-service
+
+# Pod annotations for monitoring and carrier integration
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+  carrier.nexus.io/integration-enabled: "true"
+  tracking.nexus.io/realtime-enabled: "true"
+
+# Security context for the pod
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Security context for the container
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+# Resource limits and requests
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+# Horizontal Pod Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: 1000
+
+# Node selector for pod scheduling
+nodeSelector:
+  kubernetes.io/role: shipping-service
+
+# Pod tolerations
+tolerations:
+  - key: shipping-service
+    operator: Exists
+    effect: NoSchedule
+
+# Pod affinity rules for high availability
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - shipping-service
+          topologyKey: kubernetes.io/hostname
+
+# Health check probes
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+  CARRIER_INTEGRATION_ENABLED: "true"
+  TRACKING_REALTIME_ENABLED: "true"
+  DOCUMENT_MANAGEMENT_ENABLED: "true"
+
+# ConfigMap configuration
+configmap:
+  enabled: true
+  data:
+    application.yml: |
+      spring:
+        application:
+          name: shipping-service
+        carrier:
+          integration:
+            timeout: 2000
+            retry-attempts: 3
+        tracking:
+          update-interval: 300
+          cache-ttl: 3600
+
+# Secret configuration
+secret:
+  enabled: true
+  type: Opaque
+
+# Prometheus ServiceMonitor configuration
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  interval: 15s
+  scrapeTimeout: 14s
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+
+# Istio configuration
+istio:
+  enabled: true
+  gateway:
+    enabled: true
+    host: ${DOMAIN}
+    tls:
+      mode: STRICT
+  virtualService:
+    enabled: true
+    timeout: 500ms
+    retries:
+      attempts: 3
+      perTryTimeout: 200ms
