@@ -1,0 +1,215 @@
+// Import core variables and mixins
+@use 'variables' as vars;
+@use 'mixins' as mix;
+@use 'sass:math';
+
+// Font face declarations with optimized loading
+@font-face {
+  font-family: 'Roboto';
+  src: url('/assets/fonts/roboto/Roboto-Regular.woff2') format('woff2'),
+       url('/assets/fonts/roboto/Roboto-Regular.woff') format('woff');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+// Base typography settings
+html {
+  font-family: vars.$font-family-primary;
+  font-size: vars.$font-size-base;
+  line-height: vars.$line-height-base;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: vars.$font-family-primary;
+  font-size: 1rem;
+  line-height: vars.$line-height-base;
+  color: vars.$color-text;
+  font-synthesis: none;
+  text-orientation: mixed;
+  writing-mode: horizontal-tb;
+}
+
+// Typography scale with enhanced accessibility
+.text-h1 {
+  font-size: clamp(1.75rem, 5vw, 2rem);
+  line-height: calc(1em + 0.5rem);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'ss01' 1, 'ss02' 1;
+}
+
+.text-h2 {
+  font-size: clamp(1.5rem, 4vw, 1.75rem);
+  line-height: calc(1em + 0.25rem);
+  margin-bottom: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.text-h3 {
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  line-height: calc(1em + 0.25rem);
+  margin-bottom: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.text-h4 {
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
+  line-height: calc(1em + 0.25rem);
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+.text-body1 {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.text-body2 {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.text-caption {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+// Responsive typography utilities
+@mixin responsive-type($min-size, $max-size, $viewport-min: 320px, $viewport-max: 1440px) {
+  $min-size-rem: math.div($min-size, 16px) * 1rem;
+  $max-size-rem: math.div($max-size, 16px) * 1rem;
+  $viewport-min-rem: math.div($viewport-min, 16px) * 1rem;
+  $viewport-max-rem: math.div($viewport-max, 16px) * 1rem;
+  
+  font-size: clamp(#{$min-size-rem}, #{$min-size-rem} + ((1vw - #{$viewport-min-rem}) * 1000), #{$max-size-rem});
+}
+
+// Typography utilities
+.text-truncate {
+  @include mix.text-ellipsis;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-antialiased {
+  @include mix.font-smoothing;
+}
+
+// Font weight utilities
+.font-regular {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+// Text alignment utilities
+.text-left {
+  text-align: left;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+// Text transformation utilities
+.text-uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.text-lowercase {
+  text-transform: lowercase;
+}
+
+.text-capitalize {
+  text-transform: capitalize;
+}
+
+// Line height utilities
+.leading-none {
+  line-height: 1;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.leading-normal {
+  line-height: 1.5;
+}
+
+.leading-loose {
+  line-height: 2;
+}
+
+// Font family utilities
+.font-primary {
+  font-family: vars.$font-family-primary;
+}
+
+.font-secondary {
+  font-family: vars.$font-family-secondary;
+}
+
+// Text decoration utilities
+.text-underline {
+  text-decoration: underline;
+}
+
+.text-no-underline {
+  text-decoration: none;
+}
+
+// Accessibility utilities
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// RTL support
+[dir="rtl"] {
+  .text-right {
+    text-align: left;
+  }
+  
+  .text-left {
+    text-align: right;
+  }
+}
