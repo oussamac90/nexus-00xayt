@@ -1,0 +1,96 @@
+{{/* Generate ConfigMap for Nexus Platform Configuration */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "nexus.name" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    kubernetes.io/region: {{ .Values.global.region | default "us-east-1" }}
+    environment: {{ .Values.global.environment | default "production" }}
+data:
+  # Environment Configuration
+  ENVIRONMENT: {{ .Values.global.environment | default "production" | quote }}
+  REGION: {{ .Values.global.region | default "us-east-1" | quote }}
+  DOMAIN: {{ .Values.global.domain | default "nexus.com" | quote }}
+  CLUSTER_NAME: {{ .Values.global.clusterName | default "nexus-prod" | quote }}
+
+  # API Gateway Configuration
+  API_GATEWAY_URL: {{ printf "https://%s" .Values.global.domain | quote }}
+  SERVICE_DISCOVERY_ENDPOINT: {{ printf "http://api-gateway.%s.svc.cluster.local" .Release.Namespace | quote }}
+
+  # Monitoring Configuration
+  MONITORING_ENABLED: {{ .Values.global.monitoring.enabled | default true | quote }}
+  PROMETHEUS_ENDPOINT: {{ printf "http://prometheus.%s.svc.cluster.local:9090" .Release.Namespace | quote }}
+  GRAFANA_ENDPOINT: {{ printf "http://grafana.%s.svc.cluster.local:3000" .Release.Namespace | quote }}
+  JAEGER_ENDPOINT: {{ printf "http://jaeger-collector.%s.svc.cluster.local:14268/api/traces" .Release.Namespace | quote }}
+
+  # Cache Configuration
+  REDIS_HOST: {{ printf "%s-redis-master.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
+  REDIS_PORT: "6379"
+  REDIS_SSL_ENABLED: {{ .Values.global.redis.auth.enabled | default true | quote }}
+  CACHE_TTL: "3600"
+
+  # Message Queue Configuration
+  KAFKA_BROKERS: {{ printf "%s-kafka.%s.svc.cluster.local:9092" .Release.Name .Release.Namespace | quote }}
+  KAFKA_TOPIC_PREFIX: {{ printf "%s-%s" .Values.global.environment .Release.Name | quote }}
+  KAFKA_SECURITY_PROTOCOL: {{ if .Values.global.kafka.auth.tls.enabled }}SASL_SSL{{ else }}PLAINTEXT{{ end }}
+
+  # Service Endpoints
+  SERVICE_ENDPOINTS: |
+    {
+      "auth-service": "http://auth-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "user-service": "http://user-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "product-service": "http://product-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "order-service": "http://order-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "payment-service": "http://payment-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "shipping-service": "http://shipping-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "analytics-service": "http://analytics-service.{{ .Release.Namespace }}.svc.cluster.local:8080",
+      "notification-service": "http://notification-service.{{ .Release.Namespace }}.svc.cluster.local:8080"
+    }
+
+  # Logging Configuration
+  LOGGING_LEVEL: {{ .Values.global.monitoring.logging.enabled | ternary "INFO" "WARN" | quote }}
+  LOGGING_FORMAT: "json"
+  LOG_AGGREGATOR_ENDPOINT: {{ printf "http://fluentd.%s.svc.cluster.local:24224" .Release.Namespace | quote }}
+
+  # Tracing Configuration
+  TRACING_ENABLED: {{ .Values.global.monitoring.jaeger.enabled | default true | quote }}
+  TRACING_SAMPLE_RATE: "0.1"
+
+  # Metrics Configuration
+  METRICS_ENABLED: {{ .Values.global.monitoring.prometheus.enabled | default true | quote }}
+  METRICS_PATH: "/metrics"
+  HEALTH_CHECK_PATH: "/health"
+
+  # Performance Configuration
+  REQUEST_TIMEOUT: "30000"
+  MAX_CONNECTIONS: "1000"
+  RETRY_COUNT: "3"
+  CIRCUIT_BREAKER_THRESHOLD: "50"
+
+  # Integration Configuration
+  INTEGRATION_TIMEOUT: "60000"
+  MAX_PAYLOAD_SIZE: "10mb"
+  RATE_LIMIT_WINDOW: "60000"
+  RATE_LIMIT_MAX_REQUESTS: "1000"
+
+  # Security Configuration
+  CORS_ALLOWED_ORIGINS: {{ printf "https://%s" .Values.global.domain | quote }}
+  SECURE_HEADERS_ENABLED: "true"
+  TLS_ENABLED: {{ .Values.global.security.tls.enabled | default true | quote }}
+  
+  # Feature Flags
+  FEATURES: |
+    {
+      "analytics": {{ .Values.analytics-service.enabled | default true }},
+      "notifications": {{ .Values.notification-service.enabled | default true }},
+      "advanced_search": true,
+      "real_time_tracking": true,
+      "multi_currency": true,
+      "automated_workflows": true
+    }
