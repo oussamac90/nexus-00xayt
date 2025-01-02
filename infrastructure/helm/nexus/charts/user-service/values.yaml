@@ -1,0 +1,186 @@
+# User Service Helm Chart Values
+# Version: 1.0.0
+# Dependencies: Helm 3.x
+
+# Deployment Configuration
+replicaCount: 3
+
+image:
+  repository: nexus/user-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Deployment Strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# Service Account Configuration
+serviceAccount:
+  create: true
+  name: "user-service-sa"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::account:role/user-service-role"
+
+# Pod Security Context
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Service Configuration
+service:
+  type: ClusterIP
+  port: 8081
+  targetPort: 8081
+
+# Ingress Configuration
+ingress:
+  enabled: false
+
+# Resource Management
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+# Horizontal Pod Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Node Selector
+nodeSelector: {}
+
+# Pod Affinity Rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - user-service
+          topologyKey: kubernetes.io/hostname
+
+# Pod Tolerations
+tolerations: []
+
+# Liveness Probe
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Readiness Probe
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Environment Variables
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: SERVER_PORT
+    value: "8081"
+  - name: LOG_LEVEL
+    value: "INFO"
+
+# ConfigMap Settings
+configMap:
+  enabled: true
+  data:
+    application.yml: |-
+      spring:
+        application:
+          name: user-service
+
+# Prometheus Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /actuator/prometheus
+
+# Network Policies
+networkPolicy:
+  enabled: true
+  ingressRules:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+
+# Volume Mounts
+volumeMounts:
+  - name: tmp-volume
+    mountPath: /tmp
+  - name: log-volume
+    mountPath: /var/log/nexus
+
+volumes:
+  - name: tmp-volume
+    emptyDir: {}
+  - name: log-volume
+    persistentVolumeClaim:
+      claimName: user-service-logs-pvc
+
+# Persistent Volume Claim
+persistentVolumeClaim:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  storageClass: gp2
+
+# Pod Annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: "/actuator/prometheus"
