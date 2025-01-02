@@ -1,0 +1,256 @@
+// ==========================================================================
+// Main Stylesheet - Nexus Platform
+// Version: 1.0.0
+// ==========================================================================
+
+// Import external dependencies
+@use '@angular/material/theming' as mat;
+@import 'normalize.css/normalize.css'; // v8.0.1
+
+// Import internal modules
+@use 'variables' as vars;
+@use 'mixins' as mix;
+
+// ==========================================================================
+// Material Design Theme Configuration
+// ==========================================================================
+
+@include mat.core();
+
+// Define custom theme palettes
+$nexus-primary: mat.define-palette(mat.$blue-palette, 700);
+$nexus-accent: mat.define-palette(mat.$grey-palette, 800);
+$nexus-warn: mat.define-palette(mat.$red-palette, 700);
+
+// Create light theme
+$nexus-light-theme: mat.define-light-theme((
+  color: (
+    primary: $nexus-primary,
+    accent: $nexus-accent,
+    warn: $nexus-warn
+  ),
+  typography: mat.define-typography-config(
+    $font-family: vars.$font-family-primary
+  ),
+  density: 0
+));
+
+// Create dark theme
+$nexus-dark-theme: mat.define-dark-theme((
+  color: (
+    primary: $nexus-primary,
+    accent: $nexus-accent,
+    warn: $nexus-warn
+  )
+));
+
+// Apply default light theme
+@include mat.all-component-themes($nexus-light-theme);
+
+// ==========================================================================
+// Global Reset & Base Styles
+// ==========================================================================
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  contain: content;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  height: 100%;
+  overflow-x: hidden;
+  font-family: vars.$font-family-primary;
+  font-size: clamp(14px, 1vw, 16px);
+  line-height: vars.$line-height-base;
+  color: vars.$color-text;
+  background-color: vars.$color-background;
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+}
+
+// ==========================================================================
+// Theme System
+// ==========================================================================
+
+:root {
+  // Core theme variables
+  --color-primary: #{vars.$color-primary};
+  --color-primary-light: #{vars.$color-primary-light};
+  --color-primary-dark: #{vars.$color-primary-dark};
+  --color-secondary: #{vars.$color-secondary};
+  --color-background: #{vars.$color-background};
+  --color-surface: #{vars.$color-surface};
+  --color-text: #{vars.$color-text};
+  --color-text-secondary: #{vars.$color-text-secondary};
+  --color-border: #{vars.$color-border};
+  --color-error: #{vars.$color-error};
+  --color-success: #{vars.$color-success};
+  --color-warning: #{vars.$color-warning};
+  --color-info: #{vars.$color-info};
+  
+  // Layout variables
+  --container-width: #{vars.$container-max-width};
+  --grid-columns: #{vars.$grid-columns};
+  --grid-gap: #{vars.$grid-gutter};
+  --spacing-unit: #{vars.$spacing-unit};
+}
+
+// Dark theme support
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #{vars.$color-secondary-dark};
+    --color-surface: #{vars.$color-secondary};
+    --color-text: #{vars.$color-background};
+    --color-text-secondary: #{rgba(vars.$color-background, 0.7)};
+    --color-border: #{rgba(vars.$color-background, 0.12)};
+  }
+
+  @include mat.all-component-themes($nexus-dark-theme);
+}
+
+// ==========================================================================
+// Layout System
+// ==========================================================================
+
+.container {
+  @include mix.container;
+  contain: layout style;
+  isolation: isolate;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), 1fr);
+  gap: var(--grid-gap);
+  container-type: inline-size;
+
+  @include mix.mobile-only {
+    --grid-columns: 4;
+    --grid-gap: #{vars.$spacing-sm};
+  }
+
+  @include mix.tablet-up {
+    --grid-columns: 8;
+    --grid-gap: #{vars.$spacing-md};
+  }
+
+  @include mix.desktop-up {
+    --grid-columns: 12;
+    --grid-gap: #{vars.$grid-gutter};
+  }
+}
+
+// ==========================================================================
+// Typography System
+// ==========================================================================
+
+h1, .h1 {
+  font-size: vars.$font-size-h1;
+  font-weight: vars.$font-weight-bold;
+  letter-spacing: vars.$letter-spacing-tight;
+  margin-bottom: vars.$spacing-lg;
+}
+
+h2, .h2 {
+  font-size: vars.$font-size-h2;
+  font-weight: vars.$font-weight-bold;
+  letter-spacing: vars.$letter-spacing-tight;
+  margin-bottom: vars.$spacing-md;
+}
+
+h3, .h3 {
+  font-size: vars.$font-size-h3;
+  font-weight: vars.$font-weight-medium;
+  letter-spacing: vars.$letter-spacing-normal;
+  margin-bottom: vars.$spacing-sm;
+}
+
+p {
+  font-size: vars.$font-size-body;
+  line-height: vars.$line-height-base;
+  margin-bottom: vars.$spacing-md;
+}
+
+// ==========================================================================
+// Utility Classes
+// ==========================================================================
+
+.flex-center {
+  @include mix.flex-center;
+}
+
+.text-ellipsis {
+  @include mix.text-ellipsis;
+}
+
+.elevation {
+  @for $i from 1 through 5 {
+    &-#{$i} {
+      @include mix.elevation($i);
+    }
+  }
+}
+
+// Spacing utilities
+@each $size in ('xs', 'sm', 'md', 'lg', 'xl', 'xxl') {
+  .m-#{$size} {
+    @include mix.spacing($size, margin);
+  }
+  .p-#{$size} {
+    @include mix.spacing($size, padding);
+  }
+}
+
+// ==========================================================================
+// Accessibility Enhancements
+// ==========================================================================
+
+// Focus styles
+:focus-visible {
+  @include mix.focus-ring;
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// High contrast mode adjustments
+@media (forced-colors: active) {
+  :root {
+    --color-primary: CanvasText;
+    --color-border: ButtonBorder;
+  }
+}
+
+// ==========================================================================
+// Print Styles
+// ==========================================================================
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+
+  @page {
+    margin: 2cm;
+  }
+}
