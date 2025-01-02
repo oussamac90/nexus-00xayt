@@ -1,0 +1,48 @@
+{{/* 
+cert-manager ClusterIssuer template for Nexus B2B platform
+Version: v1.13.0
+Purpose: Automated TLS certificate management with Let's Encrypt
+*/}}
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.clusterIssuer.name }}
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.Version }}
+    security.nexus.com/compliance: pci-dss,iso-27001
+    security.nexus.com/certificate-type: production
+    security.nexus.com/auto-rotation: enabled
+  annotations:
+    cert-manager.io/renewal-window: "720h0m0s"  # 30 days renewal window
+    cert-manager.io/issue-temporary-certificate: "true"
+    monitoring.nexus.com/alert-threshold: "168h"  # Alert 7 days before expiry
+    security.nexus.com/audit-logging: enabled
+    security.nexus.com/key-rotation-policy: automatic
+spec:
+  acme:
+    # ACME server configuration
+    server: {{ .Values.clusterIssuer.server }}
+    email: {{ .Values.clusterIssuer.email }}
+    privateKeySecretRef:
+      name: {{ .Values.clusterIssuer.privateKeySecretRef.name }}
+    
+    # DNS challenge solvers configuration
+    solvers:
+    - dns01:
+        route53:
+          region: {{ .Values.clusterIssuer.solvers.0.dns01.route53.region }}
+          hostedZoneID: {{ .Values.clusterIssuer.solvers.0.dns01.route53.hostedZoneID }}
+          accessKeyIDSecretRef:
+            name: {{ .Values.clusterIssuer.solvers.0.dns01.route53.accessKeyIDSecretRef.name }}
+            key: {{ .Values.clusterIssuer.solvers.0.dns01.route53.accessKeyIDSecretRef.key }}
+          secretAccessKeySecretRef:
+            name: {{ .Values.clusterIssuer.solvers.0.dns01.route53.secretAccessKeySecretRef.name }}
+            key: {{ .Values.clusterIssuer.solvers.0.dns01.route53.secretAccessKeySecretRef.key }}
+      selector:
+        dnsZones:
+        {{- range .Values.certificate.dnsNames }}
+        - {{ . }}
+        {{- end }}
