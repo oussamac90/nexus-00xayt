@@ -1,0 +1,142 @@
+spring:
+  application:
+    name: payment-service
+  
+  cloud:
+    discovery:
+      enabled: true
+      serviceId: payment-service
+  
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      # Enhanced producer settings for reliability
+      compression.type: snappy
+      batch.size: 16384
+      linger.ms: 5
+      buffer.memory: 33554432
+      enable.idempotence: true
+      max.in.flight.requests.per.connection: 5
+    
+    consumer:
+      group-id: payment-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # Enhanced consumer settings
+      max.poll.records: 500
+      max.poll.interval.ms: 300000
+      session.timeout.ms: 10000
+      heartbeat.interval.ms: 3000
+    
+    topics:
+      payment-events: nexus.payments.events
+      payment-commands: nexus.payments.commands
+  
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    ssl: true
+    timeout: 2000
+    database: 0
+    lettuce:
+      pool:
+        max-active: 50
+        max-idle: 20
+        min-idle: 10
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000 # 30 minutes
+      cache-null-values: false
+
+server:
+  port: 8085
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: payment-service
+    # Enhanced metric collection
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      sla:
+        http.server.requests: 50ms,100ms,200ms,500ms
+
+stripe:
+  api:
+    key: ${STRIPE_API_KEY}
+    version: 2022-11-15
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET}
+
+security:
+  encryption:
+    key: ${ENCRYPTION_KEY}
+    algorithm: AES/GCM/NoPadding
+  pci:
+    enabled: true
+    compliance-level: level1
+    # PCI DSS Level 1 specific settings
+    data-retention-days: 90
+    audit-logging: true
+    encryption-at-rest: true
+    tls-version: TLSv1.2
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      stripeApi:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      paymentProcessing:
+        maxRetryAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+  ratelimiter:
+    instances:
+      paymentEndpoints:
+        limitForPeriod: 1000
+        limitRefreshPeriod: 1m
+        timeoutDuration: 5s
+
+logging:
+  level:
+    root: INFO
+    com.nexus.payment: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    # Enhanced logging for payment operations
+    com.stripe: INFO
+    com.nexus.payment.transaction: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/payment-service.log
+    max-size: 100MB
+    max-history: 30
