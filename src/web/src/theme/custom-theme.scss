@@ -1,0 +1,200 @@
+// @angular/material/theming - v16.x
+@use '@angular/material/theming' as mat;
+@use './material-theme' as theme;
+@use '../assets/styles/_variables' as vars;
+
+// Custom button theme mixin
+@mixin create-custom-button-theme($theme) {
+  $primary: map-get($theme, primary);
+  $accent: map-get($theme, accent);
+  $warn: map-get($theme, warn);
+  $foreground: map-get($theme, foreground);
+  $background: map-get($theme, background);
+
+  .nexus-button {
+    padding: vars.$spacing-sm vars.$spacing-md;
+    border-radius: vars.$border-radius-md;
+    font-weight: vars.$font-weight-medium;
+    transition: all vars.$animation-duration-base vars.$animation-timing-function;
+
+    // Size variants
+    &--small {
+      padding: vars.$spacing-xs vars.$spacing-sm;
+      font-size: vars.$font-size-small;
+    }
+
+    &--large {
+      padding: vars.$spacing-md vars.$spacing-lg;
+      font-size: vars.$font-size-body;
+    }
+
+    // States
+    &:hover:not([disabled]) {
+      transform: translateY(-1px);
+      box-shadow: vars.$elevation-2;
+    }
+
+    &:focus-visible {
+      outline: vars.$focus-ring-width vars.$focus-ring-style vars.$focus-ring-color;
+      outline-offset: vars.$focus-ring-offset;
+    }
+
+    &[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    // Loading state
+    &--loading {
+      position: relative;
+      pointer-events: none;
+
+      .spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    }
+  }
+}
+
+// Custom card theme mixin
+@mixin create-custom-card-theme($theme) {
+  $elevation: map-get($theme, elevation);
+  $background: map-get($theme, background);
+
+  .nexus-card {
+    border-radius: vars.$border-radius-lg;
+    background: mat.get-color-from-palette($background, card);
+    transition: box-shadow vars.$animation-duration-base vars.$animation-timing-function;
+    
+    // Responsive layout
+    @media (max-width: vars.$breakpoint-sm) {
+      margin: vars.$spacing-sm;
+      padding: vars.$spacing-md;
+    }
+
+    @media (min-width: vars.$breakpoint-sm) {
+      margin: vars.$spacing-md;
+      padding: vars.$spacing-lg;
+    }
+
+    // Card sections
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: vars.$spacing-md;
+    }
+
+    &__content {
+      margin-bottom: vars.$spacing-lg;
+    }
+
+    &__footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: vars.$spacing-sm;
+    }
+
+    // Elevation states
+    &--elevated {
+      box-shadow: vars.$elevation-2;
+
+      &:hover {
+        box-shadow: vars.$elevation-3;
+      }
+    }
+  }
+}
+
+// Custom components mixin
+@mixin nexus-custom-components($theme) {
+  @include create-custom-button-theme($theme);
+  @include create-custom-card-theme($theme);
+
+  // Global accessibility styles
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  // High contrast mode adjustments
+  @media (forced-colors: active) {
+    .nexus-button {
+      border: vars.$border-width-medium solid ButtonText;
+    }
+
+    .nexus-card {
+      border: vars.$border-width-medium solid ButtonText;
+    }
+  }
+
+  // Form field custom styles
+  .nexus-form-field {
+    margin-bottom: vars.$spacing-md;
+
+    &__label {
+      margin-bottom: vars.$spacing-xs;
+      color: vars.$color-text-secondary;
+    }
+
+    &__input {
+      width: 100%;
+      padding: vars.$spacing-sm;
+      border: vars.$border-width-thin vars.$border-style-solid vars.$color-border;
+      border-radius: vars.$border-radius-sm;
+      transition: border-color vars.$animation-duration-base vars.$animation-timing-function;
+
+      &:focus {
+        border-color: vars.$color-primary;
+        outline: none;
+        box-shadow: 0 0 0 vars.$focus-ring-width vars.$color-focus-ring;
+      }
+
+      &--error {
+        border-color: vars.$color-error;
+      }
+    }
+
+    &__error {
+      color: vars.$color-error;
+      font-size: vars.$font-size-small;
+      margin-top: vars.$spacing-xs;
+    }
+  }
+}
+
+// Apply theme classes
+.nexus-theme {
+  @include mat.all-component-themes(theme.$nexus-light-theme);
+  @include nexus-custom-components(theme.$nexus-light-theme);
+}
+
+.nexus-dark-theme {
+  @include mat.all-component-themes(theme.$nexus-dark-theme);
+  @include nexus-custom-components(theme.$nexus-dark-theme);
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+// Export theme configuration
+:export {
+  primaryColor: vars.$color-primary;
+  secondaryColor: vars.$color-secondary;
+  borderRadius: vars.$border-radius-md;
+  spacingUnit: vars.$spacing-unit;
+}
