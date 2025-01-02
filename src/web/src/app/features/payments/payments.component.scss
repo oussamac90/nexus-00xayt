@@ -1,0 +1,211 @@
+// Import core design tokens and mixins
+@use 'src/web/src/assets/styles/variables' as vars;
+@use 'src/web/src/assets/styles/mixins' as mix;
+
+// Main container for payments component
+.payments-container {
+  display: flex;
+  flex-direction: column;
+  padding: vars.$spacing-unit * 2;
+  min-height: 100vh;
+  background-color: var(--surface-background);
+  font-family: vars.$font-family-primary;
+  transition: all vars.$animation-duration-base vars.$animation-timing-function;
+
+  @include mix.respond-to('sm') {
+    padding: vars.$spacing-md;
+  }
+
+  @include mix.respond-to('md') {
+    padding: vars.$spacing-lg;
+  }
+
+  @include mix.respond-to('lg') {
+    padding: vars.$spacing-xl;
+  }
+}
+
+// Payment form section
+.payment-form {
+  background-color: vars.$color-background;
+  border-radius: vars.$border-radius-md;
+  padding: vars.$spacing-lg;
+  margin-bottom: vars.$spacing-lg;
+  position: relative;
+  z-index: 1;
+  transition: box-shadow vars.$animation-duration-base vars.$animation-timing-function;
+
+  @include mix.elevation(2);
+  @include mix.focus-ring;
+
+  @include mix.mobile-only {
+    padding: vars.$spacing-md;
+  }
+
+  &:hover {
+    @include mix.elevation(3);
+  }
+
+  // Form field containers
+  .form-field {
+    margin-bottom: vars.$spacing-md;
+
+    label {
+      display: block;
+      margin-bottom: vars.$spacing-xs;
+      color: vars.$color-text;
+      font-weight: vars.$font-weight-medium;
+    }
+
+    input {
+      width: 100%;
+      padding: vars.$spacing-sm;
+      border: vars.$border-width-thin vars.$border-style-solid vars.$color-border;
+      border-radius: vars.$border-radius-sm;
+      transition: border-color vars.$animation-duration-base vars.$animation-timing-function;
+
+      &:focus {
+        border-color: vars.$color-primary;
+        outline: none;
+        box-shadow: 0 0 0 vars.$focus-ring-width vars.$color-focus-ring;
+      }
+
+      &.error {
+        border-color: vars.$color-error;
+      }
+    }
+  }
+}
+
+// Payment history section
+.payment-history {
+  @include mix.grid-container(1, vars.$spacing-md);
+  margin-top: vars.$spacing-xl;
+
+  @include mix.tablet-up {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .history-item {
+    background-color: vars.$color-background;
+    border-radius: vars.$border-radius-sm;
+    padding: vars.$spacing-md;
+    @include mix.elevation(1);
+
+    &:hover {
+      @include mix.elevation(2);
+    }
+
+    .transaction-details {
+      @include mix.text-ellipsis(2);
+    }
+  }
+}
+
+// Payment status indicators
+.payment-status {
+  display: inline-flex;
+  align-items: center;
+  padding: vars.$spacing-xs vars.$spacing-sm;
+  border-radius: vars.$border-radius-pill;
+  font-weight: vars.$font-weight-medium;
+  transition: all vars.$animation-duration-base vars.$animation-timing-function;
+
+  &--success {
+    background-color: rgba(vars.$color-success, 0.1);
+    color: vars.$color-success;
+
+    &::before {
+      content: '✓';
+      margin-right: vars.$spacing-xs;
+    }
+  }
+
+  &--error {
+    background-color: rgba(vars.$color-error, 0.1);
+    color: vars.$color-error;
+
+    &::before {
+      content: '✕';
+      margin-right: vars.$spacing-xs;
+    }
+  }
+
+  &--pending {
+    background-color: rgba(vars.$color-warning, 0.1);
+    color: vars.$color-warning;
+
+    &::before {
+      content: '⋯';
+      margin-right: vars.$spacing-xs;
+    }
+  }
+}
+
+// Transaction amount display
+.amount {
+  font-weight: vars.$font-weight-bold;
+  color: vars.$color-text;
+  
+  &--positive {
+    color: vars.$color-success;
+  }
+  
+  &--negative {
+    color: vars.$color-error;
+  }
+}
+
+// Responsive table for payment history
+.payment-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: vars.$spacing-lg;
+
+  @include mix.mobile-only {
+    display: block;
+    overflow-x: auto;
+  }
+
+  th, td {
+    padding: vars.$spacing-sm;
+    text-align: left;
+    border-bottom: vars.$border-width-thin vars.$border-style-solid vars.$color-border;
+  }
+
+  th {
+    background-color: vars.$color-surface;
+    font-weight: vars.$font-weight-medium;
+    color: vars.$color-text-secondary;
+  }
+
+  tr {
+    &:hover {
+      background-color: rgba(vars.$color-primary, 0.05);
+    }
+  }
+}
+
+// Loading state styles
+.loading-skeleton {
+  @include mix.flex-center;
+  min-height: 200px;
+  background-color: vars.$color-surface;
+  border-radius: vars.$border-radius-md;
+  
+  &::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 3px solid vars.$color-border;
+    border-top-color: vars.$color-primary;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
