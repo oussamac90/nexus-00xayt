@@ -1,0 +1,69 @@
+apiVersion: v2
+name: notification-service
+version: 1.0.0
+appVersion: 1.0.0
+description: Notification Service for the Nexus B2B Platform - Handles email notifications, alerts and communication templates with comprehensive monitoring and security features
+
+type: application
+
+keywords:
+  - notifications
+  - email
+  - alerts
+  - communication
+  - monitoring
+  - security
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+dependencies:
+  # Cache layer for notification templates and rate limiting
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+      - high-availability
+
+  # Message broker for async notification processing
+  - name: kafka
+    version: 23.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+    tags:
+      - messaging
+      - high-availability
+
+  # Monitoring stack
+  - name: prometheus
+    version: 15.10.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.enabled
+    tags:
+      - monitoring
+
+  # Logging stack
+  - name: elasticsearch
+    version: 19.5.0
+    repository: https://helm.elastic.co
+    condition: logging.enabled
+    tags:
+      - logging
+
+annotations:
+  category: Communication
+  licenses: Apache-2.0
+  artifacthub.io/changes: |
+    - Initial release of notification service Helm chart
+    - Integrated with SendGrid for email delivery
+    - Added high availability configuration
+    - Implemented comprehensive monitoring
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/recommendations: |
+    - Enable redis for caching and rate limiting
+    - Configure monitoring for observability
+    - Set up proper resource limits
