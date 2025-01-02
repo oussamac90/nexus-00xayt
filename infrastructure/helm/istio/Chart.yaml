@@ -1,0 +1,61 @@
+# Helm Chart for Nexus Platform Istio Service Mesh
+# Version: 1.18.0
+# Requires Kubernetes: >=1.24.0
+apiVersion: v2
+name: nexus-istio
+version: 1.0.0
+description: Production-grade Istio service mesh configuration for Nexus B2B trade platform with comprehensive security, observability, and traffic management capabilities
+type: application
+appVersion: "1.18.0"
+
+# Chart Dependencies
+dependencies:
+  - name: base
+    version: 1.18.0
+    repository: https://istio-release.storage.googleapis.com/charts
+    condition: base.enabled
+    tags:
+      - infrastructure
+      - crds
+
+  - name: istiod
+    version: 1.18.0
+    repository: https://istio-release.storage.googleapis.com/charts
+    condition: istiod.enabled
+    tags:
+      - control-plane
+      - core
+
+  - name: gateway
+    version: 1.18.0
+    repository: https://istio-release.storage.googleapis.com/charts
+    condition: gateway.enabled
+    tags:
+      - ingress
+      - networking
+
+# Chart Maintainers
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus-platform.com
+    url: https://nexus-platform.com/team
+
+# Chart Keywords
+keywords:
+  - istio
+  - service-mesh
+  - microservices
+  - security
+  - observability
+  - traffic-management
+  - zero-trust
+  - mtls
+
+# Chart Annotations
+annotations:
+  nexus.platform/component: infrastructure
+  nexus.platform/tier: platform
+  nexus.platform/criticality: high
+
+# Kubernetes Version Requirements
+kubeVersion: ">=1.24.0"
