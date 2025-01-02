@@ -1,0 +1,193 @@
+name: Security Scan
+
+on:
+  push:
+    branches: ['main', 'develop']
+  pull_request:
+    branches: ['main', 'develop']
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['java', 'javascript', 'typescript']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  dependency_scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Maven Dependency Scan
+        uses: snyk/actions/maven@v3
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      - name: NPM Dependency Scan
+        uses: snyk/actions/node@v3
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@0.11.2
+        with:
+          scan-type: 'fs'
+          format: 'cyclonedx'
+          output: 'dependency-reports/sbom.json'
+
+  container_scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Backend Container Scan
+        uses: aquasecurity/trivy-action@0.11.2
+        with:
+          image-ref: 'nexus/backend:latest'
+          format: 'sarif'
+          output: 'container-scan/backend-vulnerabilities.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Frontend Container Scan
+        uses: aquasecurity/trivy-action@0.11.2
+        with:
+          image-ref: 'nexus/frontend:latest'
+          format: 'sarif'
+          output: 'container-scan/frontend-vulnerabilities.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Container Scan Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'container-scan'
+
+  secret_scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: GitLeaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        with:
+          config-path: .gitleaks.toml
+          format: sarif
+          report-path: security-reports/gitleaks-report.sarif
+
+      - name: Upload Secret Scan Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: security-reports/gitleaks-report.sarif
+
+  quality_gates:
+    name: Security Quality Gates
+    needs: [codeql, dependency_scan, container_scan, secret_scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Critical Vulnerabilities
+        run: |
+          if [ -f "security-reports/*" ]; then
+            if grep -r "CRITICAL" security-reports/; then
+              echo "Critical vulnerabilities found!"
+              exit 1
+            fi
+          fi
+
+      - name: Create Security Report Issue
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Security Scan Failed - Critical Vulnerabilities Found',
+              body: 'Security scan detected critical vulnerabilities. Please review the scan results.'
+            })
+
+  compliance_report:
+    name: Generate Compliance Report
+    needs: [quality_gates]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate Reports
+        run: |
+          mkdir -p compliance/reports
+          cp -r security-reports/* compliance/reports/
+          cp -r dependency-reports/* compliance/reports/
+          cp -r container-scan/* compliance/reports/
+
+      - name: Upload Compliance Evidence
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-evidence
+          path: compliance/reports/
+          retention-days: 365
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            security-reports/
+            dependency-reports/
+            container-scan/
+          retention-days: 30
