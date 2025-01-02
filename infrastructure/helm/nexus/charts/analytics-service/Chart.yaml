@@ -1,0 +1,52 @@
+apiVersion: v2
+name: analytics-service
+version: 1.0.0
+description: Analytics Service for the Nexus B2B Trade Platform providing comprehensive market analytics, AI-powered forecasting, and performance metrics with high availability and scalability
+type: application
+appVersion: 1.0.0
+
+keywords:
+  - analytics
+  - business-intelligence
+  - forecasting
+  - metrics
+  - market-analysis
+  - ai-powered
+  - performance-monitoring
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+dependencies:
+  - name: mongodb
+    version: 13.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
+    tags:
+      - storage
+      - database
+
+  - name: elasticsearch
+    version: 8.8.0
+    repository: https://elastic.github.io/helm-charts
+    condition: elasticsearch.enabled
+    tags:
+      - search
+      - analytics
+
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+      - performance
+
+  - name: kafka
+    version: 23.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+    tags:
+      - messaging
+      - streaming
