@@ -1,0 +1,99 @@
+Thank you for installing {{ .Chart.Name }} version {{ .Chart.Version }}
+
+Release Name: {{ .Release.Name }}
+Release Namespace: {{ .Release.Namespace }}
+Environment: {{ .Values.global.environment }}
+
+=== ACCESS INFORMATION ===
+{{- if .Values.global.security.tls.enabled }}
+Application URL: https://{{ .Values.global.domain }}
+{{- else }}
+Application URL: http://{{ .Values.global.domain }}
+{{- end }}
+
+API Gateway Endpoint: {{ include "nexus.fullname" . }}-api-gateway.{{ .Release.Namespace }}.svc.cluster.local
+
+=== DEPLOYMENT STATUS ===
+1. Verify all services are running:
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+2. Check API Gateway status:
+   kubectl get deployment -n {{ .Release.Namespace }} {{ include "nexus.fullname" . }}-api-gateway
+
+{{- if .Values.global.monitoring.enabled }}
+=== MONITORING ACCESS ===
+{{- if .Values.global.monitoring.prometheus.enabled }}
+Prometheus:
+  URL: http://{{ include "nexus.fullname" . }}-prometheus.{{ .Release.Namespace }}.svc.cluster.local:9090
+  Status: kubectl get prometheuses -n {{ .Release.Namespace }}
+{{- end }}
+
+{{- if .Values.global.monitoring.grafana.enabled }}
+Grafana:
+  URL: http://{{ include "nexus.fullname" . }}-grafana.{{ .Release.Namespace }}.svc.cluster.local:3000
+  Default Credentials:
+    Username: admin
+    Password: kubectl get secret {{ include "nexus.fullname" . }}-grafana -n {{ .Release.Namespace }} -o jsonpath="{.data.admin-password}" | base64 --decode
+{{- end }}
+
+{{- if .Values.global.monitoring.jaeger.enabled }}
+Jaeger:
+  URL: http://{{ include "nexus.fullname" . }}-jaeger-query.{{ .Release.Namespace }}.svc.cluster.local:16686
+{{- end }}
+{{- end }}
+
+=== VERIFICATION STEPS ===
+1. Verify core services health:
+   kubectl exec -it $(kubectl get pod -l app.kubernetes.io/name=api-gateway -n {{ .Release.Namespace }} -o jsonpath='{.items[0].metadata.name}') -n {{ .Release.Namespace }} -- curl -s http://localhost:8080/actuator/health
+
+2. Check service dependencies:
+{{- if .Values.global.redis.enabled }}
+   Redis: kubectl exec -it {{ include "nexus.fullname" . }}-redis-master-0 -n {{ .Release.Namespace }} -- redis-cli ping
+{{- end }}
+{{- if .Values.global.kafka.enabled }}
+   Kafka: kubectl exec -it {{ include "nexus.fullname" . }}-kafka-0 -n {{ .Release.Namespace }} -- kafka-topics.sh --list --bootstrap-server localhost:9092
+{{- end }}
+
+3. Verify security configuration:
+{{- if .Values.global.security.tls.enabled }}
+   TLS: kubectl get certificate,certificaterequest,order,challenge -n {{ .Release.Namespace }}
+{{- end }}
+   OAuth2: kubectl get secret {{ include "nexus.fullname" . }}-oauth2-config -n {{ .Release.Namespace }}
+
+=== HIGH AVAILABILITY STATUS ===
+{{- if gt (int .Values.api-gateway.replicaCount) 1 }}
+1. Check pod distribution:
+   kubectl get pods -l app.kubernetes.io/name=api-gateway -n {{ .Release.Namespace }} -o wide
+
+2. Verify replica status:
+   kubectl get deployments -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}
+
+3. Check pod disruption budgets:
+   kubectl get pdb -n {{ .Release.Namespace }}
+{{- end }}
+
+=== TROUBLESHOOTING ===
+1. View service logs:
+   kubectl logs -f deployment/{{ include "nexus.fullname" . }}-api-gateway -n {{ .Release.Namespace }}
+
+2. Check events:
+   kubectl get events -n {{ .Release.Namespace }} --sort-by='.lastTimestamp'
+
+3. Verify network policies:
+   kubectl get networkpolicies -n {{ .Release.Namespace }}
+
+=== BACKUP STATUS ===
+{{- if .Values.global.storage.backup.enabled }}
+1. Check backup schedule:
+   kubectl get cronjob -n {{ .Release.Namespace }}
+
+2. Verify latest backup:
+   kubectl get backup -n {{ .Release.Namespace }} --sort-by='.metadata.creationTimestamp'
+{{- end }}
+
+=== SUPPORT ===
+Documentation: https://{{ .Values.global.domain }}/docs
+Support Portal: https://support.{{ .Values.global.domain }}
+Platform Team: platform@nexus.com
+
+For more information about the deployment, please refer to the Nexus Platform documentation.
