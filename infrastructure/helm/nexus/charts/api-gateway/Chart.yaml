@@ -1,0 +1,48 @@
+apiVersion: v2
+name: api-gateway
+version: 1.0.0
+appVersion: 1.0.0
+description: API Gateway service for the Nexus B2B Trade Platform - Handles routing, authentication, and security with enterprise-grade capabilities
+
+type: application
+
+keywords:
+  - api-gateway
+  - routing
+  - security
+  - oauth2
+  - rate-limiting
+  - jwt
+  - waf
+  - high-availability
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+dependencies:
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: gateway.redis.enabled
+    tags:
+      - cache
+      - session-store
+      - rate-limiting
+
+annotations:
+  category: Infrastructure
+  licenses: Apache-2.0
+  support: https://nexus.com/support
+  artifacthub.io/changes: |
+    - Initial release of API Gateway Helm chart
+    - Implements comprehensive routing and security capabilities
+    - Supports high availability deployment across multiple zones
+    - Integrates Redis for caching and rate limiting
+
+kubeVersion: ">=1.21.0"
+
+home: https://nexus.com/platform/api-gateway
+icon: https://nexus.com/icons/api-gateway.svg
+sources:
+  - https://github.com/nexus/platform/tree/main/infrastructure/helm/nexus/charts/api-gateway
