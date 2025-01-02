@@ -1,0 +1,200 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**', 'release/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  actions: read
+  security-events: write
+  id-token: write
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '18.x'
+  COVERAGE_THRESHOLD: '80'
+
+jobs:
+  backend-build:
+    name: Build Backend Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build with Maven
+        run: mvn -B clean package -DskipTests
+
+      - name: Run Unit Tests
+        run: mvn -B test
+
+      - name: Run Integration Tests
+        run: mvn -B verify -Pfailsafe
+
+      - name: Generate JaCoCo Coverage Report
+        run: mvn -B jacoco:report
+
+      - name: Check Coverage Threshold
+        run: |
+          COVERAGE=$(mvn -B jacoco:report | grep -A1 "Total.*" | tail -n1 | awk '{print $4}' | sed 's/%//')
+          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "Code coverage $COVERAGE% is below threshold of $COVERAGE_THRESHOLD%"
+            exit 1
+          fi
+
+      - name: SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Backend Docker Images
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/backend
+          push: true
+          tags: |
+            nexus/backend:${{ github.sha }}
+            nexus/backend:latest
+          cache-from: type=registry,ref=nexus/backend:latest
+          cache-to: type=inline
+
+      - name: Upload Backend Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-artifacts
+          path: |
+            **/target/*.jar
+            **/target/site/jacoco/
+          retention-days: 7
+
+  frontend-build:
+    name: Build Frontend Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache NPM packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ./src/web
+
+      - name: Lint Code
+        run: npm run lint
+        working-directory: ./src/web
+
+      - name: Run Unit Tests
+        run: npm run test:ci
+        working-directory: ./src/web
+
+      - name: Run E2E Tests
+        run: |
+          npm run cypress:run
+        working-directory: ./src/web
+
+      - name: Build Production
+        run: npm run build:prod
+        working-directory: ./src/web
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and Push Frontend Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/web
+          push: true
+          tags: |
+            nexus/frontend:${{ github.sha }}
+            nexus/frontend:latest
+          cache-from: type=registry,ref=nexus/frontend:latest
+          cache-to: type=inline
+
+      - name: Upload Frontend Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-artifacts
+          path: |
+            src/web/dist
+            src/web/coverage
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Environment
+    needs: [backend-build, frontend-build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to EKS
+        run: |
+          aws eks update-kubeconfig --name nexus-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+          kubectl apply -f k8s/
+
+      - name: Verify Deployment
+        run: |
+          kubectl wait --for=condition=available --timeout=300s deployment/nexus-backend
+          kubectl wait --for=condition=available --timeout=300s deployment/nexus-frontend
