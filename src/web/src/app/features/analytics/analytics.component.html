@@ -1,0 +1,101 @@
+<!-- Main analytics container with enhanced accessibility -->
+<div class="analytics-container" 
+     role="main" 
+     aria-label="Analytics Dashboard"
+     [ngClass]="{'mobile-view': isMobileView}"
+     data-testid="analytics-container">
+
+  <!-- Navigation tabs with ARIA support -->
+  <nav class="analytics-nav" 
+       role="navigation" 
+       aria-label="Analytics Views"
+       [ngClass]="{'nav-mobile': isMobileView}">
+    <button class="nav-item" 
+            [ngClass]="{'active': currentView === 'dashboard'}"
+            role="tab"
+            aria-selected="{{currentView === 'dashboard'}}"
+            (click)="onViewChange('dashboard')"
+            data-testid="dashboard-tab">
+      <i class="material-icons" aria-hidden="true">dashboard</i>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" 
+            [ngClass]="{'active': currentView === 'metrics'}"
+            role="tab"
+            aria-selected="{{currentView === 'metrics'}}"
+            (click)="onViewChange('metrics')"
+            data-testid="metrics-tab">
+      <i class="material-icons" aria-hidden="true">analytics</i>
+      <span>Detailed Metrics</span>
+    </button>
+  </nav>
+
+  <!-- Main content area with responsive layout -->
+  <div class="analytics-content" 
+       role="tabpanel"
+       [ngClass]="{'content-mobile': isMobileView}"
+       data-testid="analytics-content">
+    
+    <!-- Dashboard view -->
+    <app-dashboard *ngIf="currentView === 'dashboard'"
+                  [ngClass]="{'full-width': isMobileView}"
+                  data-testid="dashboard-view">
+    </app-dashboard>
+
+    <!-- Metrics view -->
+    <app-metrics *ngIf="currentView === 'metrics'"
+                [ngClass]="{'full-width': isMobileView}"
+                data-testid="metrics-view">
+    </app-metrics>
+  </div>
+
+  <!-- Loading overlay with accessibility -->
+  <div class="loading-overlay" 
+       *ngIf="isLoading"
+       role="alert"
+       aria-busy="true"
+       data-testid="loading-overlay">
+    <div class="loading-spinner" role="progressbar">
+      <mat-spinner diameter="48" 
+                   color="primary"
+                   aria-label="Loading analytics data">
+      </mat-spinner>
+    </div>
+    <span class="loading-text">Loading analytics data...</span>
+  </div>
+
+  <!-- Error container with live region -->
+  <div class="error-container" 
+       *ngIf="hasError"
+       role="alert"
+       aria-live="assertive"
+       data-testid="error-container">
+    <div class="error-content">
+      <i class="material-icons error-icon" aria-hidden="true">error</i>
+      <span class="error-message">{{errorMessage}}</span>
+      <button class="retry-button" 
+              (click)="retryLoad()"
+              aria-label="Retry loading analytics data">
+        <i class="material-icons" aria-hidden="true">refresh</i>
+        Retry
+      </button>
+    </div>
+  </div>
+
+  <!-- No data state -->
+  <div class="no-data-container" 
+       *ngIf="!isLoading && !hasError && !hasData"
+       role="status"
+       aria-label="No analytics data available"
+       data-testid="no-data-container">
+    <i class="material-icons" aria-hidden="true">info</i>
+    <span>No analytics data available for the selected period</span>
+  </div>
+
+  <!-- Screen reader announcements -->
+  <div class="sr-only" 
+       aria-live="polite" 
+       role="status">
+    {{screenReaderAnnouncement}}
+  </div>
+</div>
