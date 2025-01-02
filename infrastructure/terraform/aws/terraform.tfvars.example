@@ -1,0 +1,51 @@
+# AWS Region Configuration
+aws_region        = "us-west-2"
+secondary_region  = "eu-west-1"
+aws_profile       = "nexus-platform-prod"
+
+# Environment Configuration
+environment       = "production"
+project_name      = "nexus-platform"
+
+# Network Configuration
+vpc_cidr             = "10.0.0.0/16"
+secondary_vpc_cidr   = "10.1.0.0/16"
+availability_zones   = ["us-west-2a", "us-west-2b", "us-west-2c"]
+
+# EKS Configuration
+eks_cluster_version = "1.27"
+eks_node_group_config = {
+  instance_types = ["m6i.2xlarge", "m6a.2xlarge"]
+  desired_size   = 5
+  min_size      = 3
+  max_size      = 10
+  disk_size     = 100
+}
+
+cluster_logging = [
+  "api",
+  "audit",
+  "authenticator",
+  "controllerManager",
+  "scheduler"
+]
+
+# Database Configuration
+rds_instance_class      = "db.r6g.2xlarge"
+elasticache_node_type   = "cache.r6g.xlarge"
+backup_retention_days   = 30
+enable_enhanced_monitoring = true
+
+# Resource Tags
+tags = {
+  Environment        = "production"
+  Platform          = "nexus"
+  ManagedBy         = "terraform"
+  Project           = "nexus-platform"
+  CostCenter        = "platform-eng"
+  DataClassification = "confidential"
+  Owner             = "platform-team"
+  BusinessUnit      = "digital-trade"
+  Compliance        = "pci-dss,gdpr"
+  MaintenanceWindow = "sun:04:00-sun:06:00"
+}
