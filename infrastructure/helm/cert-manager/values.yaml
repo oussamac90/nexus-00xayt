@@ -1,0 +1,100 @@
+# cert-manager Helm chart values configuration
+# Version: v1.13.0
+
+# Global cert-manager configuration
+cert-manager:
+  enabled: true
+  installCRDs: true
+  
+  # High availability configuration
+  replicaCount: 3
+  
+  # Resource allocation
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  
+  # Pod anti-affinity for high availability
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: "kubernetes.io/hostname"
+  
+  # Monitoring configuration
+  monitoring:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: "30s"
+
+# ClusterIssuer configuration for Let's Encrypt
+clusterIssuer:
+  name: "letsencrypt-prod"
+  server: "https://acme-v02.api.letsencrypt.org/directory"
+  email: "platform@nexus.com"
+  privateKeySecretRef:
+    name: "letsencrypt-prod-account-key"
+  
+  # DNS01 challenge configuration using Route53
+  solvers:
+    - dns01:
+        route53:
+          region: "us-east-1"
+          hostedZoneID: "ROUTE53_HOSTED_ZONE_ID"
+          accessKeyIDSecretRef:
+            name: "route53-credentials"
+            key: "access-key-id"
+          secretAccessKeySecretRef:
+            name: "route53-credentials"
+            key: "secret-access-key"
+  
+  # ACME configuration
+  acme:
+    disableAccountKeyGeneration: false
+    skipTLSVerify: false
+    preferredChain: "ISRG Root X1"
+
+# Certificate resource configuration
+certificate:
+  name: "nexus-tls"
+  namespace: "default"
+  secretName: "nexus-tls-secret"
+  commonName: "*.nexus.com"
+  dnsNames:
+    - "nexus.com"
+    - "*.nexus.com"
+    - "api.nexus.com"
+    - "marketplace.nexus.com"
+    - "dr.nexus.com"
+    - "*.dr.nexus.com"
+  
+  # Certificate lifecycle configuration
+  duration: "2160h"  # 90 days
+  renewBefore: "360h"  # 15 days
+  
+  # Private key configuration
+  privateKey:
+    algorithm: "RSA"
+    encoding: "PKCS1"
+    size: 2048
+    rotationPolicy: "Always"
+  
+  # Certificate usages
+  usages:
+    - "digital signature"
+    - "key encipherment"
+    - "server auth"
+    - "client auth"
+  
+  # PKCS12 keystore configuration
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: "pkcs12-password"
+        key: "password"
