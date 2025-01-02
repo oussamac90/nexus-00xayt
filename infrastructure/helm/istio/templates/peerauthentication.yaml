@@ -1,0 +1,103 @@
+{{/* 
+Istio PeerAuthentication template for Nexus B2B Platform
+Configures mutual TLS authentication between services with enhanced security controls
+Version: 1.0
+*/}}
+
+{{- define "istio.peerauthentication" -}}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: {{ template "istio.fullname" . }}-peer-authentication
+  namespace: {{ .Values.global.istioNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "istio.name" . }}
+    helm.sh/chart: {{ template "istio.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    security.istio.io/tlsMode: {{ .Values.global.mtls.mode }}
+    security.istio.io/tlsVersion: {{ .Values.global.mtls.minProtocolVersion }}
+    monitoring.istio.io/scrape: "true"
+spec:
+  # Global mTLS configuration
+  mtls:
+    mode: {{ .Values.global.mtls.mode | default "STRICT" }}
+    # Enhanced TLS settings for compliance
+    tlsSettings:
+      minProtocolVersion: {{ .Values.global.mtls.minProtocolVersion | default "TLSV1_2" }}
+      maxProtocolVersion: "TLSV1_3"
+      cipherSuites:
+      {{- range .Values.global.mtls.cipherSuites }}
+        - {{ . }}
+      {{- end }}
+      # Certificate rotation settings
+      certRotationPeriod: "24h"
+      certValidityPeriod: "48h"
+      certMinValidityPeriod: "1h"
+
+  # Workload selector for policy application
+  selector:
+    matchLabels:
+      istio: {{ template "istio.name" . }}
+
+  # Port-level mTLS configuration
+  portLevelMtls:
+    # HTTP traffic
+    "8080":
+      mode: {{ .Values.global.mtls.mode | default "STRICT" }}
+      tlsSettings:
+        minProtocolVersion: {{ .Values.global.mtls.minProtocolVersion | default "TLSV1_2" }}
+    # HTTPS traffic
+    "8443":
+      mode: {{ .Values.global.mtls.mode | default "STRICT" }}
+      tlsSettings:
+        minProtocolVersion: {{ .Values.global.mtls.minProtocolVersion | default "TLSV1_2" }}
+    # gRPC traffic
+    "9090":
+      mode: {{ .Values.global.mtls.mode | default "STRICT" }}
+      tlsSettings:
+        minProtocolVersion: {{ .Values.global.mtls.minProtocolVersion | default "TLSV1_2" }}
+
+  # Enhanced validation rules
+  validationRules:
+    - name: "enforce-min-tls"
+      enforce: true
+      rules:
+        - field: "minProtocolVersion"
+          values: ["TLSV1_2", "TLSV1_3"]
+    - name: "validate-ciphers"
+      enforce: true
+      rules:
+        - field: "cipherSuites"
+          values: {{ .Values.global.mtls.cipherSuites | toJson }}
+
+  # Automatic mTLS upgrade configuration
+  autoMtls:
+    enabled: {{ .Values.global.mtls.autoMtls | default true }}
+    upgradeTimeout: "5m"
+    maxRetries: 3
+    retryInterval: "30s"
+
+  # Certificate management
+  certificateManagement:
+    rotation:
+      enabled: true
+      checkInterval: "1h"
+      graceTimeRatio: 0.2
+    monitoring:
+      enabled: true
+      expiryThreshold: "168h" # 7 days
+      renewalThreshold: "72h" # 3 days
+
+  # Compliance settings
+  compliance:
+    pci:
+      enabled: true
+      minTlsVersion: "TLSV1_2"
+    iso27001:
+      enabled: true
+      auditLogging: true
+{{- end }}
+
+# Generate the PeerAuthentication resource
+{{- template "istio.peerauthentication" . }}
