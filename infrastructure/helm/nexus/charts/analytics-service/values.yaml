@@ -1,0 +1,188 @@
+# Analytics Service Helm Chart Values
+# Version: 1.0.0
+# Helm v3
+
+# Number of pod replicas for high availability
+replicaCount: 2
+
+# Container image configuration
+image:
+  repository: ${REGISTRY}/analytics-service
+  tag: ${VERSION}
+  pullPolicy: Always
+
+# Image pull secrets for private registry access
+imagePullSecrets:
+  - name: nexus-registry
+
+# Optional name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration for AWS IAM roles
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::${AWS_ACCOUNT}:role/analytics-service-role
+  name: ""
+
+# Pod annotations for monitoring and logging
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/actuator/prometheus"
+  prometheus.io/port: "8085"
+  fluentbit.io/parser: "spring-boot"
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+  runAsUser: 1000
+  runAsGroup: 3000
+
+# Container security context
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8085
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+# Horizontal pod autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+
+# Node selection and affinity
+nodeSelector:
+  kubernetes.io/os: linux
+  analytics-workload: "true"
+
+# Pod tolerations
+tolerations:
+  - key: analytics-workload
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+
+# Pod anti-affinity for high availability
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - analytics-service
+          topologyKey: topology.kubernetes.io/zone
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  SERVER_PORT: "8085"
+  POSTGRES_URL: jdbc:postgresql://nexus-analytics-db:5432/nexus_analytics
+  ELASTICSEARCH_URIS: http://nexus-elasticsearch:9200
+  KAFKA_BROKERS: nexus-kafka:9092
+  REDIS_HOST: nexus-redis
+  REDIS_PORT: "6379"
+  JVM_OPTS: -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError
+
+# ConfigMap configuration
+configmap:
+  enabled: true
+  data:
+    application.yml:
+      spring.application.name: analytics-service
+      management.endpoints.web.exposure.include:
+        - health
+        - metrics
+        - prometheus
+      nexus.analytics.processing.batch-size: "1000"
+      nexus.analytics.processing.threads: "4"
+      nexus.analytics.data-retention.days: "365"
+      nexus.analytics.cache.ttl-seconds: "300"
+      nexus.analytics.elasticsearch.index-prefix: nexus-analytics
+      nexus.analytics.elasticsearch.shards: "5"
+      nexus.analytics.elasticsearch.replicas: "1"
+
+# Secrets configuration
+secrets:
+  enabled: true
+  data:
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ELASTICSEARCH_USER: ${ELASTICSEARCH_USER}
+    ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
+    JWT_SECRET: ${JWT_SECRET}
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: managed-premium
+  size: 50Gi
+  mountPath: /opt/nexus/data
+  backup:
+    enabled: true
+    schedule: "0 0 * * *"
+    retention: 30d
+
+# Prometheus ServiceMonitor configuration
+serviceMonitor:
+  enabled: true
+  path: /actuator/prometheus
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Health check probes
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8085
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8085
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
