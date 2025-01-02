@@ -1,0 +1,135 @@
+# Jaeger Configuration for Nexus B2B Platform
+# Version: 1.45.0 - jaegertracing/jaeger-operator
+# Version: 0.86.0 - opentelemetry/opentelemetry-operator
+
+# Agent configuration for collecting traces from services
+agent:
+  collector_host: jaeger-collector
+  collector_port: 14250
+  sampling_server_url: http://jaeger-collector:5778/sampling
+  reporter:
+    queue_size: 1000
+    batch_size: 100
+    batch_interval: "1s"
+    log_spans: true
+
+# Collector configuration for processing and routing spans
+collector:
+  num_workers: 50
+  queue_size: 2000
+  otlp:
+    enabled: true
+    grpc_port: 4317
+    http_port: 4318
+  kafka:
+    producer:
+      topic: jaeger-spans
+      brokers: kafka:9092
+      batch_size: 128000
+      batch_timeout: "1s"
+
+# Sampling configuration for trace collection
+sampling:
+  default_strategy:
+    type: probabilistic
+    param: 0.1
+  service_strategies:
+    - service: api-gateway
+      type: probabilistic
+      param: 1.0
+    - service: payment-service
+      type: probabilistic
+      param: 1.0
+
+# Storage configuration using Elasticsearch backend
+storage:
+  type: elasticsearch
+  options:
+    es:
+      server_urls:
+        - http://elasticsearch:9200
+      username: ${ES_USERNAME}
+      password: ${ES_PASSWORD}
+      index_prefix: jaeger
+      max_doc_count: 10000
+      bulk_size: 5000000
+      bulk_workers: 5
+      bulk_actions: 1000
+      bulk_flush_interval: "200ms"
+
+# Query service and UI configuration
+query:
+  base_path: /jaeger
+  port: 16686
+  static_files: /opt/jaeger-ui-build/
+  ui_config:
+    tracking:
+      gaID: UA-000000-2
+    menu:
+      - label: About Nexus Platform
+        url: https://nexus-docs/about
+    dependencies:
+      dagMaxNumServices: 200
+
+# Health check configuration
+health_check:
+  http_port: 14269
+
+# Admin configuration for operations
+admin:
+  http_port: 14269
+
+# Metrics configuration
+metrics:
+  backend: prometheus
+  prometheus:
+    server_url: http://prometheus:9090
+
+# Resource limits
+resources:
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storage_class: standard
+  size: 10Gi
+
+# Security configuration
+security:
+  tls:
+    enabled: true
+    ca: /etc/jaeger/tls/ca.crt
+    cert: /etc/jaeger/tls/tls.crt
+    key: /etc/jaeger/tls/tls.key
+
+# OpenTelemetry configuration
+opentelemetry:
+  enabled: true
+  collector:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+# Ingress configuration
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: jaeger.nexus-platform.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: jaeger-tls
+      hosts:
+        - jaeger.nexus-platform.com
