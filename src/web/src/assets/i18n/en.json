@@ -1,0 +1,111 @@
+{
+  "common": {
+    "buttons": {
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "save": "Save",
+      "delete": "Delete",
+      "edit": "Edit",
+      "back": "Back",
+      "next": "Next",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "approve": "Approve",
+      "export": "Export Data",
+      "import": "Import Data",
+      "generate": "Generate Report"
+    },
+    "validation": {
+      "required": "This field is required",
+      "email": "Please enter a valid email address",
+      "minLength": "Minimum length is {{value}} characters",
+      "maxLength": "Maximum length is {{value}} characters",
+      "taxId": "Please enter a valid tax identification number",
+      "dunsNumber": "Please enter a valid DUNS number",
+      "gtin": "Please enter a valid Global Trade Item Number",
+      "iban": "Please enter a valid IBAN",
+      "swiftCode": "Please enter a valid SWIFT/BIC code"
+    },
+    "status": {
+      "loading": "Loading...",
+      "success": "Success",
+      "error": "Error",
+      "warning": "Warning",
+      "processing": "Processing Request",
+      "pending": "Pending Approval",
+      "verified": "Verified",
+      "rejected": "Rejected",
+      "onHold": "On Hold"
+    }
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "forgotPassword": "Forgot Password",
+    "resetPassword": "Reset Password",
+    "twoFactor": {
+      "title": "Two-Factor Authentication",
+      "enterCode": "Enter verification code",
+      "resendCode": "Resend code",
+      "backupCode": "Use backup code"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "sessionExpired": "Your session has expired",
+      "accountLocked": "Account locked due to multiple failed attempts",
+      "insufficientPermissions": "Insufficient permissions for this operation",
+      "verificationRequired": "Account verification required"
+    }
+  },
+  "marketplace": {
+    "search": "Search products",
+    "filters": "Filters",
+    "categories": "Categories",
+    "price": "Price",
+    "productDetails": {
+      "specifications": "Technical Specifications",
+      "certifications": "Product Certifications",
+      "compliance": "Compliance Information",
+      "availability": "Stock Availability",
+      "leadTime": "Lead Time",
+      "moq": "Minimum Order Quantity",
+      "bulkPricing": "Volume Discount Tiers"
+    },
+    "sort": {
+      "label": "Sort by",
+      "options": {
+        "relevance": "Relevance",
+        "priceAsc": "Price: Low to High",
+        "priceDesc": "Price: High to Low",
+        "leadTime": "Lead Time",
+        "moqAsc": "MOQ: Low to High",
+        "rating": "Supplier Rating"
+      }
+    }
+  },
+  "orders": {
+    "title": "Orders",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "onHold": "On Hold",
+      "disputed": "Under Dispute",
+      "partiallyFulfilled": "Partially Fulfilled"
+    },
+    "details": {
+      "orderNumber": "Order Number",
+      "orderDate": "Order Date",
+      "totalAmount": "Total Amount",
+      "shippingAddress": "Shipping Address",
+      "billingAddress": "Billing Address",
+      "purchaseOrder": "Purchase Order Reference",
+      "incoterms": "Incoterms",
+      "customsDeclaration": "Customs Declaration",
+      "documents": "Trade Documents"
+    }
+  }
+}
