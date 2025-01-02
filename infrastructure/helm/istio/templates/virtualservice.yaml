@@ -1,0 +1,173 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ .Release.Name }}-vs
+  namespace: {{ .Values.global.istioNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.Version }}
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - {{ .Release.Name }}-gateway
+  http:
+    # User Service Routes
+    - match:
+        - uri:
+            prefix: "/api/v1/users"
+      route:
+        - destination:
+            host: user-service
+            port:
+              number: {{ .Values.virtualService.routes.user-service.port }}
+      timeout: {{ .Values.virtualService.routes.user-service.timeout }}
+      retries:
+        attempts: {{ .Values.virtualService.routes.user-service.retries.attempts }}
+        perTryTimeout: {{ .Values.virtualService.routes.user-service.retries.perTryTimeout }}
+        retryOn: {{ .Values.virtualService.routes.user-service.retries.retryOn }}
+      headers:
+        request:
+          set:
+            x-request-id: "{{ default uuidv4 }}"
+            x-b3-traceid: "{{ default traceid }}"
+            x-content-type-options: "nosniff"
+            strict-transport-security: "max-age=31536000; includeSubDomains"
+
+    # Product Service Routes
+    - match:
+        - uri:
+            prefix: "/api/v1/products"
+      route:
+        - destination:
+            host: product-service
+            port:
+              number: {{ .Values.virtualService.routes.product-service.port }}
+      timeout: {{ .Values.virtualService.routes.product-service.timeout }}
+      retries:
+        attempts: {{ .Values.virtualService.routes.product-service.retries.attempts }}
+        perTryTimeout: {{ .Values.virtualService.routes.product-service.retries.perTryTimeout }}
+        retryOn: {{ .Values.virtualService.routes.product-service.retries.retryOn }}
+      headers:
+        request:
+          set:
+            x-request-id: "{{ default uuidv4 }}"
+            x-b3-traceid: "{{ default traceid }}"
+
+    # Order Service Routes
+    - match:
+        - uri:
+            prefix: "/api/v1/orders"
+      route:
+        - destination:
+            host: order-service
+            port:
+              number: {{ .Values.virtualService.routes.order-service.port }}
+      timeout: {{ .Values.virtualService.routes.order-service.timeout }}
+      retries:
+        attempts: {{ .Values.virtualService.routes.order-service.retries.attempts }}
+        perTryTimeout: {{ .Values.virtualService.routes.order-service.retries.perTryTimeout }}
+        retryOn: {{ .Values.virtualService.routes.order-service.retries.retryOn }}
+      headers:
+        request:
+          set:
+            x-request-id: "{{ default uuidv4 }}"
+            x-b3-traceid: "{{ default traceid }}"
+
+    # Payment Service Routes with Enhanced Security
+    - match:
+        - uri:
+            prefix: "/api/v1/payments"
+      route:
+        - destination:
+            host: payment-service
+            port:
+              number: 8080
+      timeout: "15s"
+      retries:
+        attempts: 2
+        perTryTimeout: "5s"
+        retryOn: "connect-failure,refused-stream,unavailable,cancelled,resource-exhausted"
+      headers:
+        request:
+          set:
+            x-request-id: "{{ default uuidv4 }}"
+            x-b3-traceid: "{{ default traceid }}"
+            strict-transport-security: "max-age=31536000; includeSubDomains; preload"
+            x-frame-options: "DENY"
+            x-content-type-options: "nosniff"
+        response:
+          remove:
+            - "set-cookie"
+
+    # Authentication Service Routes
+    - match:
+        - uri:
+            prefix: "/api/v1/auth"
+      route:
+        - destination:
+            host: auth-service
+            port:
+              number: 8080
+      timeout: "5s"
+      retries:
+        attempts: 2
+        perTryTimeout: "2s"
+        retryOn: "connect-failure,refused-stream,unavailable"
+      headers:
+        request:
+          set:
+            x-request-id: "{{ default uuidv4 }}"
+            x-b3-traceid: "{{ default traceid }}"
+
+    # Analytics Service Routes
+    - match:
+        - uri:
+            prefix: "/api/v1/analytics"
+      route:
+        - destination:
+            host: analytics-service
+            port:
+              number: 8080
+      timeout: "30s"
+      retries:
+        attempts: 3
+        perTryTimeout: "10s"
+        retryOn: "connect-failure,refused-stream,unavailable,cancelled,resource-exhausted"
+      headers:
+        request:
+          set:
+            x-request-id: "{{ default uuidv4 }}"
+            x-b3-traceid: "{{ default traceid }}"
+
+    # Health Check Routes
+    - match:
+        - uri:
+            prefix: "/actuator/health"
+      route:
+        - destination:
+            host: health-check
+            port:
+              number: 8080
+      timeout: "2s"
+      retries:
+        attempts: 2
+        perTryTimeout: "1s"
+        retryOn: "connect-failure,refused-stream,unavailable"
+
+    # Global Fallback Route
+    - match:
+        - uri:
+            prefix: "/fallback"
+      route:
+        - destination:
+            host: fallback-service
+            port:
+              number: 8080
+      timeout: "1s"
+      fault:
+        abort:
+          httpStatus: 503
+          percentage:
+            value: 100
