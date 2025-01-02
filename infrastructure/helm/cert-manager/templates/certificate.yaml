@@ -1,0 +1,59 @@
+{{/* cert-manager Certificate template - v1.13.0 */}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certificate.name }}
+  namespace: {{ .Values.certificate.namespace }}
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.Version }}
+    app.kubernetes.io/component: certificate
+    app.kubernetes.io/part-of: nexus-platform
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+    cert-manager.io/private-key-rotation-policy: "Always"
+    cert-manager.io/revision-history-limit: "3"
+    cert-manager.io/certificate-name: {{ .Values.certificate.name }}
+    cert-manager.io/common-name: {{ .Values.certificate.commonName }}
+spec:
+  # Certificate secret configuration
+  secretName: {{ .Values.certificate.secretName }}
+  commonName: {{ .Values.certificate.commonName }}
+  dnsNames:
+    {{- range .Values.certificate.dnsNames }}
+    - {{ . | quote }}
+    {{- end }}
+
+  # Issuer reference configuration
+  issuerRef:
+    name: {{ .Values.clusterIssuer.name }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+  # Certificate lifecycle settings
+  duration: {{ .Values.certificate.duration | default "2160h" }}
+  renewBefore: {{ .Values.certificate.renewBefore | default "360h" }}
+
+  # Enhanced private key configuration
+  privateKey:
+    algorithm: {{ .Values.certificate.privateKey.algorithm }}
+    size: {{ .Values.certificate.privateKey.size }}
+    encoding: {{ .Values.certificate.privateKey.encoding }}
+    rotationPolicy: {{ .Values.certificate.privateKey.rotationPolicy }}
+
+  # PKCS12 keystore configuration for legacy system support
+  {{- if .Values.certificate.keystores.pkcs12.create }}
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: {{ .Values.certificate.keystores.pkcs12.passwordSecretRef.name }}
+        key: {{ .Values.certificate.keystores.pkcs12.passwordSecretRef.key }}
+  {{- end }}
+
+  # Certificate usage configuration
+  usages:
+    {{- range .Values.certificate.usages }}
+    - {{ . | quote }}
+    {{- end }}
