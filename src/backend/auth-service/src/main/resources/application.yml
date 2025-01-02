@@ -1,0 +1,140 @@
+# Spring Boot OAuth2 Authorization Server Configuration
+# Version: 3.1.0
+
+spring:
+  application:
+    name: auth-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    discovery:
+      enabled: true
+  security:
+    oauth2:
+      authorizationserver:
+        issuer: http://auth.nexus.com
+        endpoint:
+          token:
+            access-token-time-to-live: 3600s
+            refresh-token-time-to-live: 86400s
+            token-format: jwt
+        client:
+          registration:
+            require-proof-key: true
+            require-authorization-consent: true
+        jwt:
+          signing-key: ${JWT_SIGNING_KEY}
+          algorithm: RS256
+        mfa:
+          enabled: true
+          providers:
+            - totp
+            - security-key
+          required-for:
+            - payment
+            - admin
+            - security-settings
+
+# Server Configuration
+server:
+  port: 8081
+  servlet:
+    context-path: /auth
+  tomcat:
+    threads:
+      max: 200
+    connection-timeout: 5s
+    max-connections: 10000
+    accept-count: 100
+  ssl:
+    enabled: true
+    protocol: TLS
+    enabled-protocols:
+      - TLSv1.2
+      - TLSv1.3
+
+# Monitoring and Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: auth-service
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true
+
+# Kafka Configuration
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      compression:
+        type: snappy
+    consumer:
+      group-id: auth-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      max:
+        poll:
+          records: 500
+      fetch:
+        min:
+          bytes: 1
+    security:
+      protocol: SASL_SSL
+    properties:
+      sasl:
+        mechanism: PLAIN
+        jaas:
+          config: ${KAFKA_JAAS_CONFIG}
+      ssl:
+        protocol: TLSv1.3
+        enabled:
+          protocols:
+            - TLSv1.2
+            - TLSv1.3
+        endpoint:
+          identification:
+            algorithm: HTTPS
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com:
+      nexus:
+        auth: DEBUG
+    org:
+      springframework:
+        security: DEBUG
+        security:
+          oauth2: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/auth-service.log
+    max-size: 10MB
+    max-history: 30
