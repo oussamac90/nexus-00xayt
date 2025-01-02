@@ -1,0 +1,37 @@
+# Helm Chart definition for Order Service microservice
+# Version: v3
+apiVersion: v2
+name: order-service
+version: 1.0.0
+appVersion: 1.0.0
+type: application
+description: Order Service microservice for the Nexus B2B Trade Platform - Handles order processing, EDIFACT integration, workflow management, and trade standard compliance
+
+# Keywords for chart discovery and categorization
+keywords:
+  - orders
+  - edifact
+  - workflow
+  - microservice
+  - trade
+  - b2b
+  - processing
+
+# Chart maintainers
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+# Chart dependencies
+dependencies:
+  # Redis for caching and session management
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+
+  # Kafka for event streaming and message processing
+  - name: kafka
+    version: 23.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
