@@ -1,0 +1,178 @@
+# Prometheus Alerting Rules Configuration
+# Version: 2.45.0
+# AlertManager Version: 0.25.0
+
+groups:
+  # Platform Performance Alert Rules
+  - name: platform_alerts
+    interval: 15s
+    rules:
+      # API Latency Monitoring
+      - alert: HighAPILatency
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: "High API latency detected"
+          description: "API response time exceeds 500ms threshold: {{ $value }}s"
+
+      # Service Availability
+      - alert: ServiceAvailabilityLow
+        expr: avg_over_time(up{job=~"nexus-.*"}[5m]) < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service availability below 99.9%"
+          description: "Service {{ $labels.job }} availability at {{ $value }}%"
+
+      # Concurrent Users
+      - alert: HighConcurrentUsers
+        expr: sum(nexus_active_sessions) > 100000
+        for: 1m
+        labels:
+          severity: warning
+          category: capacity
+        annotations:
+          summary: "High concurrent user load"
+          description: "Active users: {{ $value }}, exceeding 100k threshold"
+
+  # Security Monitoring Alert Rules
+  - name: security_alerts
+    interval: 15s
+    rules:
+      # WAF Blocks
+      - alert: HighWAFBlocks
+        expr: rate(waf_blocked_requests_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "High rate of WAF blocks"
+          description: "{{ $value }} requests blocked by WAF in last 5m"
+
+      # Authentication Failures
+      - alert: AuthenticationFailureSpike
+        expr: rate(auth_failures_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Authentication failure spike detected"
+          description: "{{ $value }} auth failures/minute from {{ $labels.source_ip }}"
+
+      # API Rate Limiting
+      - alert: APIRateLimit
+        expr: rate(api_requests_total{status="429"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "API rate limit violations"
+          description: "{{ $value }} rate-limited requests/minute"
+
+  # Business Metrics Alert Rules
+  - name: business_alerts
+    interval: 1m
+    rules:
+      # Transaction Volume
+      - alert: LowTransactionVolume
+        expr: rate(transaction_count_total[15m]) < avg_over_time(transaction_count_total[24h]) * 0.5
+        for: 15m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Abnormal transaction volume"
+          description: "Transaction volume 50% below 24h average"
+
+      # Order Processing Time
+      - alert: SlowOrderProcessing
+        expr: avg_over_time(order_processing_duration_seconds[5m]) > 300
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Slow order processing"
+          description: "Average order processing time > 5 minutes"
+
+      # Payment Processing Errors
+      - alert: HighPaymentErrors
+        expr: rate(payment_errors_total[5m]) / rate(payment_attempts_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "High payment error rate"
+          description: "Payment error rate exceeds 5%: {{ $value }}%"
+
+  # Infrastructure Alert Rules
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # CPU Usage
+      - alert: HighCPUUsage
+        expr: avg(container_cpu_usage_seconds_total{container=~"nexus-.*"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.container }} CPU usage at {{ $value }}%"
+
+      # Memory Usage
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes{container=~"nexus-.*"} / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "High memory usage"
+          description: "Container {{ $labels.container }} memory at {{ $value }}%"
+
+      # Disk Space
+      - alert: LowDiskSpace
+        expr: disk_free_bytes / disk_total_bytes < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Low disk space"
+          description: "{{ $labels.mountpoint }} has {{ $value }}% free space"
+
+  # Integration Alert Rules
+  - name: integration_alerts
+    interval: 1m
+    rules:
+      # Integration Errors
+      - alert: HighIntegrationErrors
+        expr: rate(integration_errors_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: integration
+        annotations:
+          summary: "High integration error rate"
+          description: "{{ $value }} integration errors/minute for {{ $labels.integration }}"
+
+      # Integration Latency
+      - alert: IntegrationLatency
+        expr: rate(integration_request_duration_seconds_sum[5m]) / rate(integration_request_duration_seconds_count[5m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: integration
+        annotations:
+          summary: "High integration latency"
+          description: "Integration {{ $labels.integration }} latency > 2s"
