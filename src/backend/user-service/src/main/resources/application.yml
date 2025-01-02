@@ -1,0 +1,167 @@
+# Spring Boot 3.1.x Application Configuration
+# Spring Kafka 3.0.x Event Messaging Configuration
+# Spring Data Redis 3.1.x Caching Configuration
+
+spring:
+  application:
+    name: user-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # PostgreSQL Database Configuration with Hikari Connection Pool
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:nexus_users}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+
+  # JPA/Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 50
+          fetch_size: 100
+        order_inserts: true
+        order_updates: true
+        connection.provider_disables_autocommit: true
+    show-sql: false
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      batch-size: 16384
+      properties:
+        max.in.flight.requests.per.connection: 5
+        enable.idempotence: true
+        compression.type: snappy
+        linger.ms: 5
+        request.timeout.ms: 30000
+        delivery.timeout.ms: 120000
+    consumer:
+      group-id: user-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 500
+        max.partition.fetch.bytes: 1048576
+        heartbeat.interval.ms: 3000
+        session.timeout.ms: 45000
+        max.poll.interval.ms: 300000
+        max.poll.records: 500
+        isolation.level: read_committed
+
+  # Redis Configuration
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD}
+    timeout: 2000
+    ssl: true
+    lettuce:
+      pool:
+        max-active: 50
+        max-idle: 20
+        min-idle: 10
+        max-wait: 2000
+        time-between-eviction-runs: 30000
+
+  # Security Configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_SERVER_URL}/oauth2/jwks
+          jwk-set-uri: ${AUTH_SERVER_URL}/oauth2/jwks
+          jws-algorithm: RS256
+          audiences: 
+            - nexus-platform
+          claim-names:
+            roles: roles
+            permissions: permissions
+
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: user-service:
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 2048
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+    accept-count: 100
+    connection-timeout: 5000
+
+# Management & Monitoring Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info,loggers
+      base-path: /actuator
+  metrics:
+    tags:
+      application: user-service
+      environment: ${SPRING_PROFILES_ACTIVE:dev}
+    export:
+      prometheus:
+        enabled: true
+        step: 30s
+  health:
+    probes:
+      enabled: true
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+    show-details: always
+    show-components: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.nexus.user: ${LOG_LEVEL:INFO}
+    org.springframework: INFO
+    org.hibernate: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_PATH:/var/log/nexus}/user-service.log
+    max-size: 100MB
+    max-history: 30
