@@ -1,0 +1,244 @@
+// Import dependencies
+@use '@angular/material/theming' as mat;
+@use 'variables' as vars;
+@use 'mixins' as mix;
+
+// ==========================================================================
+// Theme Configuration
+// ==========================================================================
+
+// Theme Color Palettes
+$theme-light: (
+  primary: vars.$color-primary,
+  primary-light: vars.$color-primary-light,
+  primary-dark: vars.$color-primary-dark,
+  secondary: vars.$color-secondary,
+  secondary-light: vars.$color-secondary-light,
+  secondary-dark: vars.$color-secondary-dark,
+  background: vars.$color-background,
+  surface: vars.$color-surface,
+  text: vars.$color-text,
+  text-secondary: vars.$color-text-secondary,
+  border: vars.$color-border,
+  error: vars.$color-error,
+  success: vars.$color-success,
+  warning: vars.$color-warning,
+  info: vars.$color-info
+);
+
+$theme-dark: (
+  primary: lighten(vars.$color-primary, 10%),
+  primary-light: lighten(vars.$color-primary-light, 10%),
+  primary-dark: lighten(vars.$color-primary-dark, 10%),
+  secondary: lighten(vars.$color-secondary, 10%),
+  secondary-light: lighten(vars.$color-secondary-light, 10%),
+  secondary-dark: lighten(vars.$color-secondary-dark, 10%),
+  background: #121212,
+  surface: #1E1E1E,
+  text: #FFFFFF,
+  text-secondary: rgba(255, 255, 255, 0.7),
+  border: rgba(255, 255, 255, 0.12),
+  error: lighten(vars.$color-error, 10%),
+  success: lighten(vars.$color-success, 10%),
+  warning: lighten(vars.$color-warning, 10%),
+  info: lighten(vars.$color-info, 10%)
+);
+
+// Theme Transitions
+$theme-transition-props: (
+  background-color,
+  color,
+  border-color,
+  box-shadow,
+  fill,
+  stroke
+);
+
+$theme-transition-duration: 0.3s;
+$theme-transition-timing: ease-in-out;
+
+// ==========================================================================
+// Theme Functions
+// ==========================================================================
+
+@function create-theme-palette($base-color, $min-contrast-ratio: 4.5) {
+  $palette: mat.define-palette(mat.$blue-palette);
+  
+  @if type-of($base-color) == color {
+    $palette: mat.define-palette((
+      50: lighten($base-color, 40%),
+      100: lighten($base-color, 30%),
+      200: lighten($base-color, 20%),
+      300: lighten($base-color, 10%),
+      400: lighten($base-color, 5%),
+      500: $base-color,
+      600: darken($base-color, 5%),
+      700: darken($base-color, 10%),
+      800: darken($base-color, 20%),
+      900: darken($base-color, 30%),
+      contrast: (
+        50: rgba(black, 0.87),
+        100: rgba(black, 0.87),
+        200: rgba(black, 0.87),
+        300: rgba(black, 0.87),
+        400: rgba(black, 0.87),
+        500: white,
+        600: white,
+        700: white,
+        800: white,
+        900: white,
+      )
+    ));
+  }
+  
+  @return $palette;
+}
+
+// ==========================================================================
+// Theme Mixins
+// ==========================================================================
+
+@mixin theme-transition {
+  transition-property: #{$theme-transition-props};
+  transition-duration: $theme-transition-duration;
+  transition-timing-function: $theme-transition-timing;
+}
+
+@mixin theme-color($property, $color, $theme-map: $theme-light) {
+  #{$property}: map-get($theme-map, $color);
+  
+  @include theme-transition;
+}
+
+@mixin theme-background($theme-map: $theme-light) {
+  @include theme-color(background-color, background, $theme-map);
+  @include theme-color(color, text, $theme-map);
+}
+
+@mixin theme-elevation($level, $theme-map: $theme-light) {
+  $shadow-color: if(map-get($theme-map, background) == #121212, 
+                    rgba(255, 255, 255, 0.12), 
+                    rgba(0, 0, 0, 0.12));
+                    
+  @include mix.elevation($level);
+  
+  @include theme-transition;
+}
+
+// ==========================================================================
+// Theme Application
+// ==========================================================================
+
+@mixin apply-base-theme($theme-map) {
+  // Base styles
+  background-color: map-get($theme-map, background);
+  color: map-get($theme-map, text);
+  
+  // Typography
+  h1, h2, h3, h4, h5, h6 {
+    color: map-get($theme-map, text);
+  }
+  
+  p, span, div {
+    color: map-get($theme-map, text-secondary);
+  }
+  
+  // Links
+  a {
+    color: map-get($theme-map, primary);
+    
+    &:hover {
+      color: map-get($theme-map, primary-light);
+    }
+  }
+  
+  // Borders
+  border-color: map-get($theme-map, border);
+}
+
+// Light theme
+.theme-light {
+  @include apply-base-theme($theme-light);
+  
+  // Material theme integration
+  @include mat.all-component-themes(mat.define-light-theme((
+    color: (
+      primary: create-theme-palette(map-get($theme-light, primary)),
+      accent: create-theme-palette(map-get($theme-light, secondary)),
+      warn: create-theme-palette(map-get($theme-light, error))
+    )
+  )));
+}
+
+// Dark theme
+.theme-dark {
+  @include apply-base-theme($theme-dark);
+  
+  // Material theme integration
+  @include mat.all-component-themes(mat.define-dark-theme((
+    color: (
+      primary: create-theme-palette(map-get($theme-dark, primary)),
+      accent: create-theme-palette(map-get($theme-dark, secondary)),
+      warn: create-theme-palette(map-get($theme-dark, error))
+    )
+  )));
+}
+
+// System preference detection
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light) {
+    @include apply-base-theme($theme-dark);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.theme-dark) {
+    @include apply-base-theme($theme-light);
+  }
+}
+
+// ==========================================================================
+// Component Theme Variations
+// ==========================================================================
+
+@mixin component-themes {
+  // Cards
+  .card {
+    @include theme-background;
+    @include theme-elevation(1);
+    border-radius: vars.$border-radius-md;
+    
+    &--elevated {
+      @include theme-elevation(2);
+    }
+  }
+  
+  // Buttons
+  .button {
+    @include theme-transition;
+    
+    &--primary {
+      @include theme-color(background-color, primary);
+      @include theme-color(color, background);
+    }
+    
+    &--secondary {
+      @include theme-color(background-color, secondary);
+      @include theme-color(color, background);
+    }
+  }
+  
+  // Form elements
+  .input {
+    @include theme-color(border-color, border);
+    @include theme-color(background-color, surface);
+    @include theme-color(color, text);
+    
+    &:focus {
+      @include theme-color(border-color, primary);
+    }
+  }
+}
+
+// Apply component themes
+@include component-themes;
