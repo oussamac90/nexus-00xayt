@@ -1,0 +1,141 @@
+# Helm chart values for Product Service
+# Version: 1.0.0
+
+# Number of replicas for high availability
+replicaCount: 2
+
+# Container image configuration
+image:
+  repository: ${IMAGE_REGISTRY}/product-service
+  tag: latest
+  pullPolicy: Always
+
+# Image pull secrets for private registry access
+imagePullSecrets:
+  - name: nexus-registry
+
+# Service name override configurations
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "product-service"
+
+# Pod annotations for Prometheus metrics scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/actuator/prometheus"
+  prometheus.io/port: "8082"
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+
+# Container security context
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8082
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: "200m"
+    memory: "512Mi"
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"
+
+# Horizontal pod autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector configuration
+nodeSelector: {}
+
+# Pod tolerations
+tolerations: []
+
+# Pod affinity rules for high availability
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - product-service
+          topologyKey: kubernetes.io/hostname
+
+# Environment variables configuration
+env:
+  SPRING_PROFILES_ACTIVE: ${ENVIRONMENT:-production}
+  POSTGRES_URL: jdbc:postgresql://nexus-product-db:5432/nexus_product
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  KAFKA_BROKERS: ${KAFKA_BROKERS}
+  REDIS_HOST: ${REDIS_HOST}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
+  ECLASS_API_URL: ${ECLASS_API_URL}
+  ECLASS_API_KEY: ${ECLASS_API_KEY}
+  GS1_API_URL: ${GS1_API_URL}
+  GS1_API_KEY: ${GS1_API_KEY}
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8082
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8082
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: "managed-premium"
+  size: "10Gi"
+  accessModes:
+    - ReadWriteOnce
+
+# Prometheus ServiceMonitor configuration
+serviceMonitor:
+  enabled: true
+  path: /actuator/prometheus
+  interval: "30s"
+  scrapeTimeout: "10s"
+
+# Pod disruption budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
