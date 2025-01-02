@@ -1,0 +1,199 @@
+<div class="orders-container" role="main" aria-label="Orders management">
+  <!-- Header section with toolbar -->
+  <div class="orders-header">
+    <app-toolbar
+      title="Orders Management"
+      [showSearch]="true"
+      [elevated]="true"
+      ariaLabel="Orders management toolbar"
+      (search)="onSearch($event)"
+      (searchClear)="onSearch('')">
+    </app-toolbar>
+
+    <!-- Action buttons -->
+    <div class="orders-actions" role="toolbar" aria-label="Order actions">
+      <button 
+        app-button
+        variant="contained"
+        color="primary"
+        size="md"
+        [attr.aria-label]="'Create new order'"
+        (clicked)="onCreateOrder()">
+        <mat-icon>add</mat-icon>
+        New Order
+      </button>
+
+      <button 
+        app-button
+        variant="outlined"
+        color="primary"
+        size="md"
+        [attr.aria-label]="'Import orders'"
+        (clicked)="onImportOrders()">
+        <mat-icon>upload</mat-icon>
+        Import
+      </button>
+
+      <button 
+        app-button
+        variant="outlined"
+        color="primary"
+        size="md"
+        [attr.aria-label]="'Export selected orders'"
+        [disabled]="!hasSelection"
+        (clicked)="onExportOrders()">
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Main content with data grid -->
+  <div class="orders-content">
+    <app-data-grid
+      #ordersGrid
+      [data]="orders"
+      [columns]="columns"
+      [loading]="loading"
+      [selectable]="true"
+      [serverSide]="true"
+      [pageSize]="10"
+      [totalItems]="totalItems"
+      [uniqueKey]="'orderId'"
+      role="grid"
+      aria-label="Orders list"
+      (sortChange)="onSort($event)"
+      (pageChange)="onPageChange($event)"
+      (selectionChange)="onSelectionChange($event)"
+      (rowClick)="onOrderClick($event)"
+      (error)="onError($event)">
+    </app-data-grid>
+
+    <!-- Loading spinner -->
+    <mat-spinner
+      *ngIf="loading"
+      diameter="48"
+      class="loading-spinner"
+      role="progressbar"
+      aria-label="Loading orders">
+    </mat-spinner>
+
+    <!-- No results message -->
+    <div 
+      *ngIf="!loading && orders?.length === 0"
+      class="no-results"
+      role="status"
+      aria-live="polite">
+      <mat-icon>search_off</mat-icon>
+      <p>No orders found</p>
+    </div>
+  </div>
+</div>
+
+<!-- Error notification template -->
+<ng-template #errorTemplate let-error>
+  <div class="error-notification" role="alert">
+    <mat-icon color="warn">error</mat-icon>
+    <span>{{error.message}}</span>
+  </div>
+</ng-template>
+
+<style>
+  .orders-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100vh;
+    background-color: var(--surface-color);
+  }
+
+  .orders-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .orders-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    flex-wrap: wrap;
+  }
+
+  .orders-content {
+    flex: 1;
+    position: relative;
+    padding: var(--spacing-md);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .loading-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .no-results mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .error-notification {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--color-error);
+    color: white;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .orders-actions {
+      padding: var(--spacing-sm);
+      justify-content: stretch;
+    }
+
+    .orders-actions button {
+      flex: 1;
+    }
+
+    .orders-content {
+      padding: var(--spacing-sm);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .orders-actions {
+      flex-direction: column;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (forced-colors: active) {
+    .orders-header {
+      border-bottom: 2px solid ButtonText;
+    }
+
+    .error-notification {
+      border: 2px solid ButtonText;
+    }
+  }
+</style>
