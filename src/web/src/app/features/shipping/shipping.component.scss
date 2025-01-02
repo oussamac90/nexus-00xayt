@@ -1,0 +1,189 @@
+// Import core styles and themes
+@use '@angular/material/theming' as mat; // v16.x
+@use 'src/web/src/assets/styles/variables' as vars;
+@use 'src/web/src/assets/styles/mixins' as mix;
+@use 'src/web/src/assets/styles/themes' as themes;
+
+// Container Layout
+.shipping-container {
+  @include mix.container;
+  @include mix.spacing('lg', padding);
+  @include themes.theme-background;
+  min-height: 100%;
+  
+  &__header {
+    @include mix.flex-center(row);
+    justify-content: space-between;
+    margin-bottom: vars.$spacing-lg;
+  }
+
+  &__content {
+    @include themes.theme-elevation(1);
+    border-radius: vars.$border-radius-md;
+    padding: vars.$spacing-lg;
+  }
+}
+
+// Shipping Grid Layout
+.shipping-grid {
+  display: grid;
+  gap: vars.$spacing-md;
+  
+  @include mix.mobile-only {
+    grid-template-columns: 1fr;
+  }
+
+  @include mix.tablet-up {
+    grid-template-columns: repeat(2, 1fr);
+    gap: vars.$spacing-lg;
+  }
+
+  @include mix.desktop-up {
+    grid-template-columns: repeat(3, 1fr);
+    gap: vars.$spacing-xl;
+  }
+}
+
+// Tracking Card Component
+.tracking-card {
+  @include themes.theme-background;
+  @include themes.theme-elevation(2);
+  border-radius: vars.$border-radius-md;
+  padding: vars.$spacing-md;
+  transition: transform vars.$animation-duration-base vars.$animation-timing-function;
+
+  &:hover {
+    @include themes.theme-elevation(3);
+    transform: translateY(-2px);
+  }
+
+  &__header {
+    @include mix.flex-center(row);
+    justify-content: space-between;
+    margin-bottom: vars.$spacing-md;
+  }
+
+  &__content {
+    margin-bottom: vars.$spacing-md;
+  }
+
+  &__footer {
+    @include mix.flex-center(row);
+    justify-content: flex-end;
+    gap: vars.$spacing-sm;
+  }
+}
+
+// Shipping Rates Table
+.rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: vars.$spacing-lg;
+
+  th, td {
+    @include themes.theme-color('color', 'text');
+    padding: vars.$spacing-sm;
+    text-align: left;
+    border-bottom: vars.$border-width-thin solid;
+    @include themes.theme-color('border-color', 'border');
+  }
+
+  th {
+    @include themes.theme-color('background-color', 'surface');
+    font-weight: vars.$font-weight-medium;
+  }
+
+  @include mix.mobile-only {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+// Form Fields
+.form-field {
+  margin-bottom: vars.$spacing-md;
+
+  &__label {
+    display: block;
+    margin-bottom: vars.$spacing-xs;
+    @include themes.theme-color('color', 'text-secondary');
+    font-weight: vars.$font-weight-medium;
+  }
+
+  &__input {
+    width: 100%;
+    padding: vars.$spacing-sm;
+    border: vars.$border-width-thin solid;
+    @include themes.theme-color('border-color', 'border');
+    border-radius: vars.$border-radius-sm;
+    @include themes.theme-background;
+    
+    &:focus {
+      @include mix.focus-ring;
+      @include themes.theme-color('border-color', 'primary');
+    }
+  }
+}
+
+// Status Indicators
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: vars.$spacing-xs vars.$spacing-sm;
+  border-radius: vars.$border-radius-pill;
+  font-size: vars.$font-size-small;
+  font-weight: vars.$font-weight-medium;
+
+  &--pending {
+    @include themes.theme-color('background-color', 'warning');
+    @include themes.theme-color('color', 'background');
+  }
+
+  &--in-transit {
+    @include themes.theme-color('background-color', 'info');
+    @include themes.theme-color('color', 'background');
+  }
+
+  &--delivered {
+    @include themes.theme-color('background-color', 'success');
+    @include themes.theme-color('color', 'background');
+  }
+}
+
+// Accessibility Enhancements
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+// Print Styles
+@media print {
+  .shipping-container {
+    padding: 0;
+  }
+
+  .tracking-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: vars.$border-width-thin solid;
+    @include themes.theme-color('border-color', 'border');
+  }
+
+  .status-badge {
+    border: vars.$border-width-thin solid;
+    @include themes.theme-color('border-color', 'text');
+  }
+}
