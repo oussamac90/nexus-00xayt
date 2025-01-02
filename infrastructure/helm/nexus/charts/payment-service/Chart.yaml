@@ -1,0 +1,53 @@
+# Helm Chart definition for Nexus Platform Payment Service
+# Version: 1.0.0
+# PCI DSS Compliant Payment Processing Microservice
+
+apiVersion: v2
+name: payment-service
+description: PCI DSS compliant Payment Service for Nexus B2B Platform - Handles secure payment processing, escrow services, and multi-currency transactions with comprehensive compliance controls
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+
+# Keywords for chart discovery and categorization
+keywords:
+  - payment
+  - escrow
+  - pci-dss
+  - microservice
+  - multi-currency
+  - secure-processing
+  - payment-gateway
+  - b2b-payments
+
+# Chart maintainers
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+  - name: Security Team
+    email: security@nexus.com
+
+# Required dependencies with specific versions for production use
+dependencies:
+  - name: postgresql
+    version: 12.5.3
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - database
+      - pci-dss
+
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+      - rate-limiting
+
+# Annotations for deployment metadata and compliance
+annotations:
+  compliance/pci-dss: "true"
+  security/data-encryption: "required"
+  monitoring/prometheus: "enabled"
+  backup/enabled: "true"
