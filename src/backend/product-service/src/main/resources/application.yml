@@ -1,0 +1,152 @@
+spring:
+  application:
+    name: product-service
+    description: Product catalog management service with standards integration
+  
+  # Database Configuration with HikariCP optimization
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/nexus_product}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+
+  # JPA Configuration with performance optimizations
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 100
+          fetch_size: 200
+        order_inserts: true
+        order_updates: true
+        generate_statistics: true
+        cache:
+          use_second_level_cache: true
+          region:
+            factory_class: org.hibernate.cache.redis.hibernate.RedisRegionFactory
+
+  # Kafka Configuration for event streaming
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      batch-size: 32768
+      compression-type: snappy
+      retries: 3
+      properties:
+        max.in.flight.requests.per.connection: 5
+        enable.idempotence: true
+        linger.ms: 5
+    consumer:
+      group-id: product-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      max-poll-records: 500
+      properties:
+        spring.json.trusted.packages: com.nexus.product.model
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 500
+
+  # Redis Configuration for caching
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD}
+    timeout: 2000
+    lettuce:
+      pool:
+        max-active: 100
+        max-idle: 50
+        min-idle: 20
+        max-wait: 1000
+        time-between-eviction-runs: 30000
+      shutdown-timeout: 200
+
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: product:
+
+# Server Configuration
+server:
+  port: 8082
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 1024
+    excluded-user-agents: MSIE 6
+  http2:
+    enabled: true
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 10000
+    accept-count: 100
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+      base-path: /actuator
+  metrics:
+    tags:
+      application: product-service
+      environment: ${SPRING_PROFILES_ACTIVE:local}
+    export:
+      prometheus:
+        enabled: true
+        step: 30s
+  health:
+    show-details: when_authorized
+    redis:
+      enabled: true
+    db:
+      enabled: true
+
+# eCl@ss Integration Configuration
+eclass:
+  api:
+    base-url: ${ECLASS_API_URL}
+    api-key: ${ECLASS_API_KEY}
+    version: "12.0"
+    timeout: 5000
+    retry:
+      max-attempts: 3
+      initial-interval: 1000
+      multiplier: 2.0
+
+# GS1 Integration Configuration
+gs1:
+  api:
+    base-url: ${GS1_API_URL}
+    api-key: ${GS1_API_KEY}
+    version: "3.4"
+    timeout: 5000
+    retry:
+      max-attempts: 3
+      initial-interval: 1000
+      multiplier: 2.0
