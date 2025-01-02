@@ -1,0 +1,126 @@
+<div class="payments-container" role="main" aria-label="Payment Management">
+  <!-- Main Payment Management Card -->
+  <mat-card class="payment-card" role="region" aria-label="Payment Operations">
+    <mat-card-header>
+      <mat-card-title>Payment Management</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Loading Indicator -->
+      <app-loader 
+        *ngIf="loading"
+        [isLoading]="true"
+        [diameter]="48"
+        color="primary"
+        aria-label="Loading payment data">
+      </app-loader>
+
+      <!-- Payment Management Tabs -->
+      <mat-tab-group 
+        *ngIf="!loading"
+        role="tablist"
+        aria-label="Payment Management Options"
+        [selectedIndex]="0"
+        animationDuration="200ms"
+        class="payment-tabs">
+
+        <!-- Process Payment Tab -->
+        <mat-tab 
+          label="Process Payment" 
+          role="tab"
+          aria-label="Process New Payment">
+          <div 
+            class="tab-content payment-form-container"
+            role="tabpanel"
+            aria-label="Payment Form Section">
+            <app-payment-form
+              [loading]="loading"
+              [orderId]="currentOrderId"
+              [amount]="paymentAmount"
+              [currency]="currency"
+              (paymentComplete)="handlePaymentComplete($event)"
+              (paymentError)="handlePaymentError($event)">
+            </app-payment-form>
+          </div>
+        </mat-tab>
+
+        <!-- Payment History Tab -->
+        <mat-tab 
+          label="Payment History" 
+          role="tab"
+          aria-label="View Payment History">
+          <div 
+            class="tab-content payment-history-container"
+            role="tabpanel"
+            aria-label="Payment History Section">
+            <app-payment-history
+              [loading]="loading"
+              (refundRequested)="initiateRefund($event)">
+            </app-payment-history>
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<style>
+  /* Container Styles */
+  .payments-container {
+    padding: var(--spacing-md);
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+  }
+
+  /* Card Styles */
+  .payment-card {
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--elevation-2);
+  }
+
+  .payment-card mat-card-header {
+    padding: var(--spacing-md);
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+  }
+
+  .payment-card mat-card-title {
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  /* Tab Styles */
+  .payment-tabs {
+    margin-top: var(--spacing-md);
+  }
+
+  .tab-content {
+    padding: var(--spacing-md);
+  }
+
+  /* Container Styles */
+  .payment-form-container,
+  .payment-history-container {
+    min-height: 400px;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: var(--breakpoint-sm)) {
+    .payments-container {
+      padding: var(--spacing-sm);
+    }
+
+    .tab-content {
+      padding: var(--spacing-sm);
+    }
+  }
+
+  /* High Contrast Mode Support */
+  @media (forced-colors: active) {
+    .payment-card {
+      border: var(--border-width-thin) solid CanvasText;
+    }
+  }
+</style>
