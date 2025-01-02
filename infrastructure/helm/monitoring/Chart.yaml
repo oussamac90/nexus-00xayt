@@ -1,0 +1,53 @@
+apiVersion: v2
+name: nexus-monitoring
+version: 1.0.0
+kubeVersion: ">=1.21.0"
+description: Enterprise-grade monitoring stack for the Nexus B2B Trade Platform with integrated metrics collection, distributed tracing, log aggregation, and alerting capabilities
+type: application
+appVersion: "1.0.0"
+
+# Chart dependencies with specific versions for production use
+dependencies:
+  - name: prometheus
+    version: "19.0.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+
+  - name: grafana 
+    version: "6.50.0"
+    repository: https://grafana.github.io/helm-charts
+    condition: grafana.enabled
+
+  - name: alertmanager
+    version: "1.5.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: alertmanager.enabled
+
+  - name: jaeger
+    version: "2.40.0" 
+    repository: https://jaegertracing.github.io/helm-charts
+    condition: jaeger.enabled
+
+  - name: elasticsearch
+    version: "8.5.1"
+    repository: https://helm.elastic.co
+    condition: elasticsearch.enabled
+
+maintainers:
+  - name: Nexus Platform Team
+    email: platform@nexus.com
+
+keywords:
+  - monitoring
+  - observability
+  - metrics
+  - logging
+  - tracing
+  - alerting
+  - security-monitoring
+  - distributed-tracing
+  - log-aggregation
+  - prometheus
+  - grafana
+  - jaeger
+  - elasticsearch
