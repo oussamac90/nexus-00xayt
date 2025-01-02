@@ -1,0 +1,141 @@
+// @angular/material/theming - v16.x
+@use '@angular/material/theming' as mat;
+@use '../assets/styles/_variables' as vars;
+
+// Include core Material styles
+@include mat.core();
+
+// Typography configuration
+$nexus-typography-config: mat.define-typography-config(
+  $font-family: vars.$font-family-primary,
+  $headline-1: mat.define-typography-level(32px, 40px, 300, vars.$font-family-primary, -0.025em),
+  $headline-2: mat.define-typography-level(24px, 32px, 400, vars.$font-family-primary, -0.0125em),
+  $headline-3: mat.define-typography-level(20px, 28px, 500, vars.$font-family-primary, 0),
+  $headline-4: mat.define-typography-level(16px, 24px, 500, vars.$font-family-primary, 0.0125em),
+  $body-1: mat.define-typography-level(16px, 24px, 400, vars.$font-family-primary, 0.0125em),
+  $body-2: mat.define-typography-level(14px, 20px, 400, vars.$font-family-primary, 0.0178em),
+  $subtitle-1: mat.define-typography-level(16px, 24px, 500, vars.$font-family-primary, 0.0094em),
+  $subtitle-2: mat.define-typography-level(14px, 20px, 500, vars.$font-family-primary, 0.0067em),
+  $button: mat.define-typography-level(14px, 20px, 500, vars.$font-family-primary, 0.0892em),
+  $caption: mat.define-typography-level(12px, 16px, 400, vars.$font-family-primary, 0.0333em),
+  $overline: mat.define-typography-level(10px, 16px, 500, vars.$font-family-primary, 0.1667em)
+);
+
+// Color palettes
+$nexus-primary-palette: mat.define-palette(mat.$blue-palette, 700, 300, 900);
+$nexus-accent-palette: mat.define-palette(mat.$grey-palette, 800, 500, 900);
+$nexus-warn-palette: mat.define-palette(mat.$red-palette, 700, 400, 900);
+
+// Custom background configuration for light theme
+$nexus-light-background: (
+  status-bar: map-get(mat.$grey-palette, 300),
+  app-bar: map-get(mat.$grey-palette, 100),
+  background: white,
+  hover: rgba(black, 0.04),
+  card: white,
+  dialog: white,
+  disabled-button: rgba(black, 0.12),
+  raised-button: white,
+  focused-button: rgba(black, 0.12),
+  selected-button: map-get(mat.$grey-palette, 300),
+  selected-disabled-button: map-get(mat.$grey-palette, 400),
+  disabled-button-toggle: map-get(mat.$grey-palette, 200),
+  unselected-chip: map-get(mat.$grey-palette, 300),
+  disabled-list-option: map-get(mat.$grey-palette, 200),
+  tooltip: map-get(mat.$grey-palette, 700),
+);
+
+// Custom background configuration for dark theme
+$nexus-dark-background: (
+  status-bar: black,
+  app-bar: map-get(mat.$grey-palette, 900),
+  background: #303030,
+  hover: rgba(white, 0.04),
+  card: map-get(mat.$grey-palette, 800),
+  dialog: map-get(mat.$grey-palette, 800),
+  disabled-button: rgba(white, 0.12),
+  raised-button: map-get(mat.$grey-palette, 800),
+  focused-button: rgba(white, 0.12),
+  selected-button: map-get(mat.$grey-palette, 900),
+  selected-disabled-button: map-get(mat.$grey-palette, 800),
+  disabled-button-toggle: black,
+  unselected-chip: map-get(mat.$grey-palette, 700),
+  disabled-list-option: black,
+  tooltip: map-get(mat.$grey-palette, 700),
+);
+
+// Light theme configuration
+$nexus-light-theme: mat.define-light-theme((
+  color: (
+    primary: $nexus-primary-palette,
+    accent: $nexus-accent-palette,
+    warn: $nexus-warn-palette,
+  ),
+  typography: $nexus-typography-config,
+  density: 0,
+));
+
+// Dark theme configuration
+$nexus-dark-theme: mat.define-dark-theme((
+  color: (
+    primary: $nexus-primary-palette,
+    accent: $nexus-accent-palette,
+    warn: $nexus-warn-palette,
+  ),
+  typography: $nexus-typography-config,
+  density: 0,
+));
+
+// Custom elevation configuration
+$nexus-elevations: (
+  0: none,
+  1: 0 2px 4px rgba(0, 0, 0, 0.1),
+  2: 0 4px 8px rgba(0, 0, 0, 0.12),
+  3: 0 8px 16px rgba(0, 0, 0, 0.14),
+  4: 0 12px 24px rgba(0, 0, 0, 0.16),
+  modal: 0 24px 38px rgba(0, 0, 0, 0.18)
+);
+
+// Apply the light theme by default
+@include mat.all-component-themes($nexus-light-theme);
+
+// Dark theme class
+.nexus-dark-theme {
+  @include mat.all-component-colors($nexus-dark-theme);
+  
+  // Custom dark theme elevation overrides
+  .mat-elevation-z1 { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
+  .mat-elevation-z2 { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.24); }
+  .mat-elevation-z3 { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28); }
+  .mat-elevation-z4 { box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32); }
+}
+
+// CSS Custom Properties for theme colors
+:root {
+  --primary-color: #{mat.get-color-from-palette($nexus-primary-palette, 500)};
+  --primary-lighter-color: #{mat.get-color-from-palette($nexus-primary-palette, 100)};
+  --primary-darker-color: #{mat.get-color-from-palette($nexus-primary-palette, 700)};
+  --accent-color: #{mat.get-color-from-palette($nexus-accent-palette, 500)};
+  --accent-lighter-color: #{mat.get-color-from-palette($nexus-accent-palette, 100)};
+  --accent-darker-color: #{mat.get-color-from-palette($nexus-accent-palette, 700)};
+  --warn-color: #{mat.get-color-from-palette($nexus-warn-palette, 500)};
+  --warn-lighter-color: #{mat.get-color-from-palette($nexus-warn-palette, 100)};
+  --warn-darker-color: #{mat.get-color-from-palette($nexus-warn-palette, 700)};
+  --text-primary-color: #{mat.get-color-from-palette($nexus-primary-palette, 'default-contrast')};
+  --text-accent-color: #{mat.get-color-from-palette($nexus-accent-palette, 'default-contrast')};
+  --text-warn-color: #{mat.get-color-from-palette($nexus-warn-palette, 'default-contrast')};
+}
+
+// High contrast mode overrides
+@media (forced-colors: active) {
+  .mat-button,
+  .mat-raised-button,
+  .mat-icon-button,
+  .mat-stroked-button,
+  .mat-flat-button,
+  .mat-fab,
+  .mat-mini-fab {
+    --mat-mdc-button-persistent-ripple-color: buttontext;
+    --mat-mdc-button-ripple-color: buttontext;
+  }
+}
