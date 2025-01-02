@@ -1,0 +1,129 @@
+<div class="app-container" role="application" aria-label="Nexus Platform Application">
+  <!-- Main Application Header -->
+  <app-header 
+    (sidenavToggle)="toggleNavigation()" 
+    (themeToggle)="toggleTheme($event)"
+    role="banner" 
+    aria-label="Application Header">
+  </app-header>
+
+  <!-- Main Navigation and Content Container -->
+  <mat-sidenav-container 
+    class="sidenav-container" 
+    role="navigation" 
+    aria-label="Main Navigation">
+    
+    <!-- Side Navigation Panel -->
+    <mat-sidenav 
+      #sidenav
+      [mode]="isMobile ? 'over' : 'side'"
+      [opened]="!isMobile"
+      [fixedInViewport]="true"
+      [fixedTopGap]="64"
+      class="sidenav"
+      role="complementary"
+      aria-label="Side Navigation">
+      
+      <app-navigation
+        [isOpen]="isNavigationOpen"
+        [navigationItems]="navigationConfig">
+      </app-navigation>
+    </mat-sidenav>
+
+    <!-- Main Content Area -->
+    <mat-sidenav-content 
+      class="main-content"
+      role="main" 
+      aria-label="Main Content">
+      
+      <!-- Dynamic Content Router Outlet -->
+      <router-outlet 
+        aria-live="polite">
+      </router-outlet>
+
+      <!-- Loading Indicator -->
+      <div 
+        *ngIf="isLoading$ | async"
+        class="loading-overlay"
+        role="progressbar"
+        aria-label="Loading content">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>
+
+<!-- Global Theme Styles -->
+<style>
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    transition: background-color var(--animation-duration-base) var(--animation-timing-function);
+  }
+
+  .sidenav-container {
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .sidenav {
+    width: 256px;
+    border-right: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+  }
+
+  .main-content {
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    min-height: 100%;
+    background-color: var(--background-color);
+  }
+
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(var(--overlay-color), 0.5);
+    z-index: var(--z-index-overlay);
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .sidenav {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .main-content {
+      padding: var(--spacing-sm);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .main-content {
+      padding: var(--spacing-lg);
+    }
+  }
+
+  /* High Contrast Mode Support */
+  @media (forced-colors: active) {
+    .app-container {
+      forced-color-adjust: none;
+    }
+
+    .sidenav {
+      border-right: 2px solid ButtonText;
+    }
+  }
+</style>
