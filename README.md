@@ -43,7 +43,7 @@ graph TB
     end
 
     subgraph Service Layer
-        subgraph Core Services
+        subgraph Core
             USR[User Service]
             PRD[Product Service]
             ORD[Order Service]
@@ -51,7 +51,7 @@ graph TB
             SHP[Shipping Service]
         end
 
-        subgraph Support Services
+        subgraph Support
             AUTH[Auth Service]
             NOTIF[Notification Service]
             ANLYT[Analytics Service]
@@ -69,12 +69,12 @@ graph TB
     WEB & MOB & API --> LB
     LB --> WAF
     WAF --> APIG
-    APIG --> Core Services
-    APIG --> Support Services
-    Core Services --> KAFKA
-    Core Services --> PSQL & MONGO
-    Support Services --> REDIS & ES
-    Core Services <--> ERP & LOG & PAY & EDI
+    APIG --> Core
+    APIG --> Support
+    Core --> KAFKA
+    Core --> PSQL & MONGO
+    Support --> REDIS & ES
+    Core <--> ERP & LOG & PAY & EDI
 ```
 
 ## Technology Stack
